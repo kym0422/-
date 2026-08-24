@@ -52,7 +52,7 @@ export default function LoginPage() {
       <section className="login-brand-panel">
         <div className="login-brand">
           <span className="brand-mark brand-mark-light">G</span>
-          <div><strong>GENORAY</strong><small>현장실습 프로그램</small></div>
+          <div><strong>GENORAY</strong><small>제노레이 현장실습 프로그램</small></div>
         </div>
         <div className="login-copy">
           <span className="login-kicker"><ShieldCheck size={17} /> 안전한 현장실습 운영</span>
