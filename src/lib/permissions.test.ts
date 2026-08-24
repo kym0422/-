@@ -3,13 +3,19 @@ import { describe, test } from "node:test";
 
 import { DEMO_IDS, demoEvents, demoInterns, demoNotices, demoSuggestions, demoTasks } from "./demo-data";
 import {
+  canAssignTask,
   canAccessRoute,
   canCancelSuggestion,
+  canEvaluateIntern,
   canCreateEvaluation,
   canEditCalendarEvent,
   canEditTask,
   canEditWeeklyReport,
+  canManageCohorts,
   canManageIntern,
+  canManageUsers,
+  canSubmitTask,
+  canViewIntern,
   canViewCalendarEvent,
   canViewNotice,
   canViewSuggestion,
@@ -38,6 +44,14 @@ describe("role permission matrix", () => {
     assert.equal(hasPermission("MENTOR", "evaluation:write-assigned"), true);
     assert.equal(hasPermission("INTERN", "suggestion:write-own"), true);
     assert.equal(hasPermission("INTERN", "evaluation:read-all"), false);
+    assert.equal(canManageUsers("ADMIN"), true);
+    assert.equal(canManageUsers("MENTOR"), false);
+    assert.equal(canManageCohorts("ADMIN"), true);
+    assert.equal(canViewIntern("MENTOR"), true);
+    assert.equal(canAssignTask("MENTOR"), true);
+    assert.equal(canAssignTask("INTERN"), false);
+    assert.equal(canSubmitTask("INTERN"), true);
+    assert.equal(canEvaluateIntern("MENTOR"), true);
   });
 
   test("uses default-deny route access", () => {

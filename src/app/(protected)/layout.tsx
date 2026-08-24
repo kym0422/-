@@ -1,5 +1,9 @@
 import { ProtectedApp } from "@/components/app-shell";
+import { requireUser } from "@/lib/auth/current-user";
 
-export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+export const dynamic = "force-dynamic";
+
+export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  await requireUser();
   return <ProtectedApp>{children}</ProtectedApp>;
 }

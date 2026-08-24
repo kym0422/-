@@ -42,6 +42,12 @@ npm install
 npm run dev
 ```
 
+## Supabase Auth and role access
+
+This project now uses Supabase Auth cookie sessions for login and server-side
+role checks. Follow [the Supabase Auth and RBAC setup guide](docs/auth-rbac.md)
+before running a production-like environment.
+
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 엽니다. 개발 서버가 정상인지 JSON으로 확인하려면 [http://localhost:3000/api/health](http://localhost:3000/api/health)에 접속합니다.
 
 데모 모드만 확인할 때는 Supabase 계정이나 환경변수가 없어도 됩니다.

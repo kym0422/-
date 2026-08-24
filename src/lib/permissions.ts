@@ -75,6 +75,16 @@ export function hasPermission(role: Role, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role].includes(permission);
 }
 
+// Shared role checks keep components from scattering role string comparisons.
+export const canManageUsers = (role: Role) => hasPermission(role, "member:manage");
+export const canManageCohorts = (role: Role) => role === "ADMIN";
+export const canViewIntern = (role: Role) => role === "ADMIN" || role === "MENTOR";
+export const canAssignTask = (role: Role) =>
+  hasPermission(role, "task:manage-all") || hasPermission(role, "task:manage-assigned");
+export const canSubmitTask = (role: Role) => role === "INTERN";
+export const canEvaluateIntern = (role: Role) =>
+  hasPermission(role, "evaluation:read-all") || hasPermission(role, "evaluation:write-assigned");
+
 function normalizedPath(pathname: string): string {
   const pathOnly = pathname.split(/[?#]/, 1)[0] || "/";
   if (pathOnly === "/") {

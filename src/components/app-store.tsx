@@ -11,9 +11,26 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AppData, DEMO_PASSWORD, initialData, Profile } from "./app-data";
+import { AppData, initialData, Profile, type Role } from "./app-data";
+import { createClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 type Toast = { message: string; tone: "success" | "error" | "info" } | null;
+type LoginResult = { ok: true } | { ok: false; message: string };
+
+type ProfileRow = {
+  id: string;
+  auth_user_id: string;
+  email: string;
+  name: string;
+  role: Role;
+  department: string | null;
+  cohort_id: string | null;
+  project_group: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+};
 
 type AppStoreValue = {
   data: AppData;
@@ -21,38 +38,66 @@ type AppStoreValue = {
   currentUser: Profile | null;
   ready: boolean;
   toast: Toast;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  logout: () => Promise<void>;
   notify: (message: string, tone?: NonNullable<Toast>["tone"]) => void;
   resetDemo: () => void;
 };
 
 const DATA_KEY = "genoray-intern-app-data-v1";
-const SESSION_KEY = "genoray-intern-app-session-v1";
 const AppStoreContext = createContext<AppStoreValue | null>(null);
+
+function toProfile(profile: ProfileRow): Profile {
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    role: profile.role,
+    department: profile.department ?? "",
+    cohortId: profile.cohort_id ?? undefined,
+    projectGroup: profile.project_group ?? undefined,
+    startDate: profile.start_date ?? undefined,
+    endDate: profile.end_date ?? undefined,
+    isActive: profile.is_active,
+  };
+}
+
+async function getActiveProfile(authUserId: string): Promise<Profile | null> {
+  const { data, error } = await createClient()
+    .from("profiles")
+    .select("id, auth_user_id, email, name, role, department, cohort_id, project_group, start_date, end_date, is_active")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  const profile = data as ProfileRow | null;
+  return error || !profile || !profile.is_active ? null : toProfile(profile);
+}
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(initialData);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
 
   useEffect(() => {
     let storedData: AppData | null = null;
-    let storedUserId: string | null = null;
-    try {
+    async function hydrate() {
+      try {
       const serializedData = window.localStorage.getItem(DATA_KEY);
-      storedUserId = window.localStorage.getItem(SESSION_KEY);
       if (serializedData) storedData = JSON.parse(serializedData) as AppData;
     } catch {
       window.localStorage.removeItem(DATA_KEY);
-      window.localStorage.removeItem(SESSION_KEY);
     }
-    queueMicrotask(() => {
+
       if (storedData) setData(storedData);
-      if (storedUserId) setUserId(storedUserId);
+      if (isSupabaseConfigured()) {
+        const { data: { user } } = await createClient().auth.getUser();
+        if (user) setCurrentUser(await getActiveProfile(user.id));
+      }
       setReady(true);
-    });
+    }
+
+    void hydrate();
   }, []);
 
   useEffect(() => {
@@ -64,32 +109,33 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [data, ready]);
 
-  const currentUser = useMemo(
-    () => data.profiles.find((profile) => profile.id === userId && profile.isActive) ?? null,
-    [data.profiles, userId],
-  );
-
   const notify = useCallback((message: string, tone: NonNullable<Toast>["tone"] = "success") => {
     setToast({ message, tone });
     window.setTimeout(() => setToast(null), 2800);
   }, []);
 
-  const login = useCallback(
-    (email: string, password: string) => {
-      const profile = data.profiles.find(
-        (candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase() && candidate.isActive,
-      );
-      if (!profile || password !== DEMO_PASSWORD) return false;
-      setUserId(profile.id);
-      window.localStorage.setItem(SESSION_KEY, profile.id);
-      return true;
-    },
-    [data.profiles],
-  );
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+    if (!isSupabaseConfigured()) {
+      return { ok: false, message: "Supabase 연결 정보가 설정되지 않았습니다. 관리자에게 문의해 주세요." };
+    }
 
-  const logout = useCallback(() => {
-    setUserId(null);
-    window.localStorage.removeItem(SESSION_KEY);
+    const supabase = createClient();
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error || !authData.user) return { ok: false, message: "이메일 또는 비밀번호를 확인해 주세요." };
+
+    const profile = await getActiveProfile(authData.user.id);
+    if (!profile) {
+      await supabase.auth.signOut();
+      return { ok: false, message: "사용할 수 없는 계정입니다. 관리자에게 문의해 주세요." };
+    }
+
+    setCurrentUser(profile);
+    return { ok: true };
+  }, []);
+
+  const logout = useCallback(async () => {
+    setCurrentUser(null);
+    if (isSupabaseConfigured()) await createClient().auth.signOut();
   }, []);
 
   const resetDemo = useCallback(() => {
