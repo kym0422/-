@@ -32,6 +32,9 @@ type ProfileRow = {
   is_active: boolean;
 };
 
+type CohortRow = { id: string; name: string; start_date: string; end_date: string; total_weeks: number; status: "UPCOMING" | "ACTIVE" | "COMPLETED" };
+type AssignmentRow = { id: string; cohort_id: string; intern_id: string; primary_mentor_id: string; secondary_mentor_id: string | null };
+
 type AppStoreValue = {
   data: AppData;
   setData: Dispatch<SetStateAction<AppData>>;
@@ -44,7 +47,6 @@ type AppStoreValue = {
   resetDemo: () => void;
 };
 
-const DATA_KEY = "genoray-intern-app-data-v1";
 const AppStoreContext = createContext<AppStoreValue | null>(null);
 
 function toProfile(profile: ProfileRow): Profile {
@@ -81,26 +83,32 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function hydrate() {
-      window.localStorage.removeItem(DATA_KEY);
-
       if (isSupabaseConfigured()) {
-        const { data: { user } } = await createClient().auth.getUser();
-        if (user) setCurrentUser(await getActiveProfile(user.id));
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const profile = await getActiveProfile(user.id);
+          setCurrentUser(profile);
+          if (profile) {
+            const [{ data: profiles }, { data: cohorts }, { data: assignments }] = await Promise.all([
+              supabase.from("profiles").select("id,auth_user_id,email,name,role,department,cohort_id,project_group,start_date,end_date,is_active"),
+              supabase.from("cohorts").select("id,name,start_date,end_date,total_weeks,status"),
+              supabase.from("mentor_assignments").select("id,cohort_id,intern_id,primary_mentor_id,secondary_mentor_id"),
+            ]);
+            setData({
+              ...initialData,
+              profiles: ((profiles ?? []) as ProfileRow[]).map(toProfile),
+              cohorts: ((cohorts ?? []) as CohortRow[]).map((cohort) => ({ id: cohort.id, name: cohort.name, startDate: cohort.start_date, endDate: cohort.end_date, totalWeeks: cohort.total_weeks, status: cohort.status })),
+              mentorAssignments: ((assignments ?? []) as AssignmentRow[]).map((assignment) => ({ id: assignment.id, cohortId: assignment.cohort_id, internId: assignment.intern_id, primaryMentorId: assignment.primary_mentor_id, secondaryMentorId: assignment.secondary_mentor_id ?? undefined })),
+            });
+          }
+        }
       }
       setReady(true);
     }
 
     void hydrate();
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      window.localStorage.setItem(DATA_KEY, JSON.stringify(data));
-    } catch {
-      queueMicrotask(() => setToast({ message: "브라우저 저장 공간이 부족해 변경 내용을 저장하지 못했습니다.", tone: "error" }));
-    }
-  }, [data, ready]);
 
   const notify = useCallback((message: string, tone: NonNullable<Toast>["tone"] = "success") => {
     setToast({ message, tone });
@@ -133,8 +141,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const resetDemo = useCallback(() => {
     setData(initialData);
-    window.localStorage.removeItem(DATA_KEY);
-    notify("데모 데이터를 초기 상태로 되돌렸습니다.", "info");
+    notify("화면 데이터를 초기화했습니다.", "info");
   }, [notify]);
 
   const value = useMemo<AppStoreValue>(
