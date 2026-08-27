@@ -2,9 +2,7 @@
 
 import {
   createContext,
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -32,19 +30,31 @@ type ProfileRow = {
   is_active: boolean;
 };
 
-type CohortRow = { id: string; name: string; start_date: string; end_date: string; total_weeks: number; status: "UPCOMING" | "ACTIVE" | "COMPLETED" };
-type AssignmentRow = { id: string; cohort_id: string; intern_id: string; primary_mentor_id: string; secondary_mentor_id: string | null };
+type CohortRow = {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  total_weeks: number;
+  status: "UPCOMING" | "ACTIVE" | "COMPLETED";
+};
+type AssignmentRow = {
+  id: string;
+  cohort_id: string;
+  intern_id: string;
+  primary_mentor_id: string;
+  secondary_mentor_id: string | null;
+};
 
 type AppStoreValue = {
   data: AppData;
-  setData: Dispatch<SetStateAction<AppData>>;
   currentUser: Profile | null;
   ready: boolean;
   toast: Toast;
   login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
   notify: (message: string, tone?: NonNullable<Toast>["tone"]) => void;
-  resetDemo: () => void;
 };
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
@@ -81,34 +91,66 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
 
-  useEffect(() => {
-    async function hydrate() {
-      if (isSupabaseConfigured()) {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const profile = await getActiveProfile(user.id);
-          setCurrentUser(profile);
-          if (profile) {
-            const [{ data: profiles }, { data: cohorts }, { data: assignments }] = await Promise.all([
-              supabase.from("profiles").select("id,auth_user_id,email,name,role,department,cohort_id,project_group,start_date,end_date,is_active"),
-              supabase.from("cohorts").select("id,name,start_date,end_date,total_weeks,status"),
-              supabase.from("mentor_assignments").select("id,cohort_id,intern_id,primary_mentor_id,secondary_mentor_id"),
-            ]);
-            setData({
-              ...initialData,
-              profiles: ((profiles ?? []) as ProfileRow[]).map(toProfile),
-              cohorts: ((cohorts ?? []) as CohortRow[]).map((cohort) => ({ id: cohort.id, name: cohort.name, startDate: cohort.start_date, endDate: cohort.end_date, totalWeeks: cohort.total_weeks, status: cohort.status })),
-              mentorAssignments: ((assignments ?? []) as AssignmentRow[]).map((assignment) => ({ id: assignment.id, cohortId: assignment.cohort_id, internId: assignment.intern_id, primaryMentorId: assignment.primary_mentor_id, secondaryMentorId: assignment.secondary_mentor_id ?? undefined })),
-            });
-          }
-        }
-      }
+  const hydrate = useCallback(async () => {
+    if (!isSupabaseConfigured()) {
+      setCurrentUser(null);
+      setData(initialData);
       setReady(true);
+      return;
     }
 
-    void hydrate();
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCurrentUser(null);
+        setData(initialData);
+        return;
+      }
+
+      const profile = await getActiveProfile(user.id);
+      setCurrentUser(profile);
+      if (!profile) {
+        setData(initialData);
+        return;
+      }
+
+      const [{ data: profiles }, { data: cohorts }, { data: assignments }] = await Promise.all([
+        supabase.from("profiles").select("id,auth_user_id,email,name,role,department,cohort_id,project_group,start_date,end_date,is_active"),
+        supabase.from("cohorts").select("id,name,start_date,end_date,total_weeks,status"),
+        supabase.from("mentor_assignments").select("id,cohort_id,intern_id,primary_mentor_id,secondary_mentor_id"),
+      ]);
+      setData({
+        ...initialData,
+        profiles: ((profiles ?? []) as ProfileRow[]).map(toProfile),
+        cohorts: ((cohorts ?? []) as CohortRow[]).map((cohort) => ({
+          id: cohort.id,
+          name: cohort.name,
+          startDate: cohort.start_date,
+          endDate: cohort.end_date,
+          totalWeeks: cohort.total_weeks,
+          status: cohort.status,
+        })),
+        mentorAssignments: ((assignments ?? []) as AssignmentRow[]).map((assignment) => ({
+          id: assignment.id,
+          cohortId: assignment.cohort_id,
+          internId: assignment.intern_id,
+          primaryMentorId: assignment.primary_mentor_id,
+          secondaryMentorId: assignment.secondary_mentor_id ?? undefined,
+        })),
+      });
+    } catch {
+      setCurrentUser(null);
+      setData(initialData);
+    } finally {
+      setReady(true);
+    }
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void hydrate(), 0);
+    return () => window.clearTimeout(timer);
+  }, [hydrate]);
 
   const notify = useCallback((message: string, tone: NonNullable<Toast>["tone"] = "success") => {
     setToast({ message, tone });
@@ -130,23 +172,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       return { ok: false, message: "사용할 수 없는 계정입니다. 관리자에게 문의해 주세요." };
     }
 
-    setCurrentUser(profile);
+    await hydrate();
     return { ok: true };
-  }, []);
+  }, [hydrate]);
 
   const logout = useCallback(async () => {
     setCurrentUser(null);
+    setData(initialData);
     if (isSupabaseConfigured()) await createClient().auth.signOut();
   }, []);
 
-  const resetDemo = useCallback(() => {
-    setData(initialData);
-    notify("화면 데이터를 초기화했습니다.", "info");
-  }, [notify]);
-
   const value = useMemo<AppStoreValue>(
-    () => ({ data, setData, currentUser, ready, toast, login, logout, notify, resetDemo }),
-    [currentUser, data, login, logout, notify, ready, resetDemo, toast],
+    () => ({ data, currentUser, ready, toast, login, logout, refresh: hydrate, notify }),
+    [currentUser, data, hydrate, login, logout, notify, ready, toast],
   );
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

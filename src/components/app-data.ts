@@ -12,10 +12,14 @@ export type Evaluation = { id: string; internId: string; mentorId: string; title
 export type Suggestion = { id: string; ownerToken: string; title: string; content: string; status: "ACTIVE" | "CANCELED"; submittedAt: string; readAt?: string };
 export type Cohort = { id: string; name: string; startDate: string; endDate: string; totalWeeks: number; status: "UPCOMING" | "ACTIVE" | "COMPLETED" };
 export type MentorAssignment = { id: string; cohortId: string; internId: string; primaryMentorId: string; secondaryMentorId?: string };
-export type AppData = { profiles: Profile[]; cohorts: Cohort[]; mentorAssignments: MentorAssignment[]; notices: Notice[]; events: CalendarEvent[]; resources: Resource[]; tasks: AssignedTask[]; weeklyReports: WeeklyReport[]; evaluations: Evaluation[]; suggestions: Suggestion[] };
+/**
+ * Reference data shared by the client shell. Feature records are intentionally
+ * fetched by their own screens from Supabase rather than mirrored in memory.
+ */
+export type AppData = { profiles: Profile[]; cohorts: Cohort[]; mentorAssignments: MentorAssignment[] };
 
 export const roleLabels: Record<Role, string> = { ADMIN: "관리자", MENTOR: "멘토", INTERN: "인턴" };
-export const initialData: AppData = { profiles: [], cohorts: [], mentorAssignments: [], notices: [], events: [], resources: [], tasks: [], weeklyReports: [], evaluations: [], suggestions: [] };
+export const initialData: AppData = { profiles: [], cohorts: [], mentorAssignments: [] };
 
 export function uid(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 export function getWeekNumber(startDate?: string, endDate?: string, reference = new Date()) { if (!startDate) return 1; const start = new Date(`${startDate}T00:00:00`); if (endDate && reference > new Date(`${endDate}T23:59:59`)) return null; return Math.max(1, Math.floor(Math.floor((reference.getTime() - start.getTime()) / 86_400_000) / 7) + 1); }

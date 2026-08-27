@@ -45,8 +45,13 @@ where auth_user_id = 'AUTH_USER_UUID';
 ```
 
 Create MENTOR and INTERN Auth users in the same way, then let an ADMIN assign
-their final role, active state, cohort, and mentor assignments. Do not create a
-public signup page.
+their final role, active state, cohort, and mentor assignments. A public signup
+flow must never assign an active role by itself.
+
+After the first ADMIN account is available, the **관리자 설정** screen can create
+subsequent Auth accounts and their profiles together. This uses the server-only
+`SUPABASE_SERVICE_ROLE_KEY` through `/api/admin/users`; keep that variable out
+of client code and restrict access to the ADMIN role.
 
 ## Access model
 

@@ -1,40 +1,120 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, BriefcaseBusiness, CalendarClock, CheckCircle2, Circle, FileText, MessageSquareText, UsersRound } from "lucide-react";
 import { getWeekNumber, roleLabels } from "@/components/app-data";
 import { useAppStore } from "@/components/app-store";
 import { Avatar, Badge, Card, EmptyState, ProgressBar, SectionTitle } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
+
+type EventRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  start_at: string;
+  end_at: string;
+  event_type: "SCHEDULE" | "TODO";
+  visibility: "ALL" | "PRIVATE" | "ADMIN" | "MENTOR" | "INTERN" | "COHORT";
+  is_important: boolean;
+  is_completed: boolean;
+  created_by: string;
+};
+type NoticeRow = { id: string; title: string; created_at: string; is_important: boolean };
+type ProfileRow = { id: string; name: string; role: "ADMIN" | "MENTOR" | "INTERN"; department: string | null; project_group: string | null; is_active: boolean };
+type AssignmentRow = { intern_id: string; primary_mentor_id: string; secondary_mentor_id: string | null };
+type CohortRow = { id: string; name: string; start_date: string; end_date: string; total_weeks: number };
+type CountRow = { id: string };
+
+const koreaFormatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
+
+function koreaDate(value: string) {
+  const parts = Object.fromEntries(koreaFormatter.formatToParts(new Date(value)).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function displayDate(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric" }).format(new Date(value));
+}
 
 export default function DashboardPage() {
-  const { currentUser, data, setData } = useAppStore();
-  if (!currentUser) return null;
+  const { currentUser, notify } = useAppStore();
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [notices, setNotices] = useState<NoticeRow[]>([]);
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
+  const [cohorts, setCohorts] = useState<CohortRow[]>([]);
+  const [tasks, setTasks] = useState<CountRow[]>([]);
+  const [reports, setReports] = useState<CountRow[]>([]);
+  const [evaluations, setEvaluations] = useState<CountRow[]>([]);
+  const [suggestions, setSuggestions] = useState<Array<CountRow & { read_at: string | null; status: "ACTIVE" | "CANCELED" }>>([]);
+  const [loading, setLoading] = useState(true);
 
-  const assignment = data.mentorAssignments.find((item) => item.internId === currentUser.id);
-  const currentCohort = data.cohorts.find((cohort) => cohort.id === currentUser.cohortId) ?? {
+  const loadDashboard = useCallback(async () => {
+    const supabase = createClient();
+    const [eventResult, noticeResult, profileResult, assignmentResult, cohortResult, taskResult, reportResult, evaluationResult, suggestionResult] = await Promise.all([
+      supabase.from("calendar_events").select("id,title,description,start_at,end_at,event_type,visibility,is_important,is_completed,created_by").order("start_at", { ascending: true }),
+      supabase.from("notices").select("id,title,created_at,is_important").order("created_at", { ascending: false }).limit(3),
+      supabase.from("profiles").select("id,name,role,department,project_group,is_active"),
+      supabase.from("mentor_assignments").select("intern_id,primary_mentor_id,secondary_mentor_id"),
+      supabase.from("cohorts").select("id,name,start_date,end_date,total_weeks"),
+      supabase.from("tasks").select("id"),
+      supabase.from("weekly_reports").select("id"),
+      supabase.from("evaluations").select("id"),
+      supabase.from("suggestions").select("id,read_at,status"),
+    ]);
+
+    const errors = [eventResult.error, noticeResult.error, profileResult.error, assignmentResult.error, cohortResult.error, taskResult.error, reportResult.error, evaluationResult.error, suggestionResult.error];
+    if (errors.some(Boolean)) {
+      notify("대시보드 데이터를 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+    }
+    setEvents((eventResult.data ?? []) as EventRow[]);
+    setNotices((noticeResult.data ?? []) as NoticeRow[]);
+    setProfiles((profileResult.data ?? []) as ProfileRow[]);
+    setAssignments((assignmentResult.data ?? []) as AssignmentRow[]);
+    setCohorts((cohortResult.data ?? []) as CohortRow[]);
+    setTasks((taskResult.data ?? []) as CountRow[]);
+    setReports((reportResult.data ?? []) as CountRow[]);
+    setEvaluations((evaluationResult.data ?? []) as CountRow[]);
+    setSuggestions((suggestionResult.data ?? []) as Array<CountRow & { read_at: string | null; status: "ACTIVE" | "CANCELED" }>);
+    setLoading(false);
+  }, [notify]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const timer = window.setTimeout(() => void loadDashboard(), 0);
+    return () => window.clearTimeout(timer);
+  }, [currentUser, loadDashboard]);
+
+  const currentCohort = useMemo(() => cohorts.find((cohort) => cohort.id === currentUser?.cohortId) ?? {
     id: "unassigned",
     name: "배정된 기수 없음",
-    startDate: "",
-    endDate: "",
-    totalWeeks: 0,
-    status: "UPCOMING" as const,
-  };
-  const week = getWeekNumber(currentUser.startDate ?? currentCohort.startDate, currentUser.endDate ?? currentCohort.endDate);
-  const visibleEvents = data.events.filter((event) => {
-    if (event.eventType === "TODO") return event.createdBy === currentUser.id;
-    return event.visibility === "ALL" || event.visibility === currentUser.role || event.createdBy === currentUser.id;
-  });
-  const upcoming = visibleEvents.filter((event) => event.startDate >= "2026-08-13").sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 4);
-  const todos = data.events.filter((event) => event.eventType === "TODO" && event.createdBy === currentUser.id && !event.isCompleted);
-  const notices = data.notices.filter((notice) => notice.target === "ALL" || notice.target === currentUser.role).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
-  const assignedInterns = currentUser.role === "MENTOR"
-    ? data.mentorAssignments.filter((item) => item.primaryMentorId === currentUser.id || item.secondaryMentorId === currentUser.id).map((item) => data.profiles.find((profile) => profile.id === item.internId)).filter(Boolean)
-    : [];
-  const primaryMentor = data.profiles.find((profile) => profile.id === assignment?.primaryMentorId);
-  const secondaryMentor = data.profiles.find((profile) => profile.id === assignment?.secondaryMentorId);
+    start_date: "",
+    end_date: "",
+    total_weeks: 0,
+  }, [cohorts, currentUser?.cohortId]);
 
-  function completeTodo(eventId: string) {
-    setData((previous) => ({ ...previous, events: previous.events.map((event) => event.id === eventId ? { ...event, isCompleted: !event.isCompleted } : event) }));
+  if (!currentUser) return null;
+  const today = koreaDate(new Date().toISOString());
+  const week = getWeekNumber(currentUser.startDate ?? currentCohort.start_date, currentUser.endDate ?? currentCohort.end_date);
+  const upcoming = events.filter((event) => event.event_type === "SCHEDULE" && koreaDate(event.start_at) >= today).slice(0, 4);
+  const todos = events.filter((event) => event.event_type === "TODO" && event.created_by === currentUser.id && !event.is_completed);
+  const assignedInterns = currentUser.role === "MENTOR"
+    ? assignments.filter((item) => item.primary_mentor_id === currentUser.id || item.secondary_mentor_id === currentUser.id).map((item) => profiles.find((profile) => profile.id === item.intern_id)).filter((profile): profile is ProfileRow => Boolean(profile))
+    : [];
+  const assignment = assignments.find((item) => item.intern_id === currentUser.id);
+  const primaryMentor = profiles.find((profile) => profile.id === assignment?.primary_mentor_id);
+  const secondaryMentor = profiles.find((profile) => profile.id === assignment?.secondary_mentor_id);
+  const progress = currentCohort.total_weeks > 0 ? ((week ?? 1) / currentCohort.total_weeks) * 100 : 0;
+
+  async function completeTodo(event: EventRow) {
+    const completed = !event.is_completed;
+    const { error } = await createClient().from("calendar_events").update({ is_completed: completed, completed_at: completed ? new Date().toISOString() : null }).eq("id", event.id);
+    if (error) {
+      notify("To-do 상태를 저장하지 못했습니다.", "error");
+      return;
+    }
+    await loadDashboard();
   }
 
   return (
@@ -42,81 +122,33 @@ export default function DashboardPage() {
       <section className="welcome-card">
         <div className="welcome-copy">
           <p>{roleLabels[currentUser.role]} 대시보드</p>
-          <h1>{currentUser.name}님, 좋은 하루예요.</h1>
-          <span>현장실습 {week ? `${week}주차` : "종료"} 진행 중입니다. 오늘의 일정과 업무를 확인해 보세요.</span>
+          <h1>{currentUser.name}님, 좋은 하루 되세요.</h1>
+          <span>현재 실습 {week ? `${week}주차` : "종료"} 진행 중입니다. 오늘의 일정과 업무를 확인해 보세요.</span>
           <div className="welcome-meta">
             <dl><dt>소속</dt><dd>{currentUser.department}</dd></dl>
-            <dl><dt>실습 기간</dt><dd>{currentUser.startDate ?? currentCohort.startDate} ~ {currentUser.endDate ?? currentCohort.endDate}</dd></dl>
+            <dl><dt>실습 기간</dt><dd>{currentUser.startDate ?? currentCohort.start_date} ~ {currentUser.endDate ?? currentCohort.end_date}</dd></dl>
             {currentUser.role === "INTERN" ? <dl><dt>프로젝트</dt><dd>{currentUser.projectGroup}</dd></dl> : null}
           </div>
         </div>
-        <div className="week-orbit" aria-label={`현재 ${week ?? currentCohort.totalWeeks}주차`}>
-          <div><strong>{week ?? currentCohort.totalWeeks}</strong><span>WEEK</span></div>
-          <small>총 {currentCohort.totalWeeks}주 과정</small>
-        </div>
+        <div className="week-orbit" aria-label={`현재 ${week ?? currentCohort.total_weeks}주차`}><div><strong>{week ?? currentCohort.total_weeks}</strong><span>WEEK</span></div><small>총 {currentCohort.total_weeks}주 과정</small></div>
       </section>
 
       <div className="stats-grid">
-        <Card className="stat-card"><span className="stat-icon blue"><CalendarClock size={21} /></span><div><p>다가오는 일정</p><strong>{upcoming.length}</strong><small>7일 이내 주요 일정</small></div></Card>
+        <Card className="stat-card"><span className="stat-icon blue"><CalendarClock size={21} /></span><div><p>다가오는 일정</p><strong>{upcoming.length}</strong><small>Supabase 캘린더 기준</small></div></Card>
         <Card className="stat-card"><span className="stat-icon amber"><CheckCircle2 size={21} /></span><div><p>남은 To-do</p><strong>{todos.length}</strong><small>나만 볼 수 있는 할 일</small></div></Card>
-        {currentUser.role === "ADMIN" ? <>
-          <Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>활동 인턴</p><strong>{data.profiles.filter((p) => p.role === "INTERN" && p.isActive).length}</strong><small>{currentCohort.name}</small></div></Card>
-          <Card className="stat-card"><span className="stat-icon purple"><MessageSquareText size={21} /></span><div><p>읽지 않은 건의</p><strong>{data.suggestions.filter((s) => !s.readAt && s.status === "ACTIVE").length}</strong><small>익명으로 보호됨</small></div></Card>
-        </> : currentUser.role === "MENTOR" ? <>
-          <Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>담당 인턴</p><strong>{assignedInterns.length}</strong><small>주·서브 멘토 포함</small></div></Card>
-          <Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>제출 평가</p><strong>{data.evaluations.filter((e) => e.mentorId === currentUser.id && e.status === "ACTIVE").length}</strong><small>내가 작성한 기록</small></div></Card>
-        </> : <>
-          <Card className="stat-card"><span className="stat-icon green"><BriefcaseBusiness size={21} /></span><div><p>배정 과제</p><strong>{data.tasks.filter((t) => t.internId === currentUser.id).length}</strong><small>현재 진행 과제</small></div></Card>
-          <Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>작성 보고서</p><strong>{data.weeklyReports.filter((r) => r.internId === currentUser.id).length}</strong><small>저장된 주차 기록</small></div></Card>
-        </>}
+        {currentUser.role === "ADMIN" ? <><Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>활동 인턴</p><strong>{profiles.filter((profile) => profile.role === "INTERN" && profile.is_active).length}</strong><small>{currentCohort.name}</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><MessageSquareText size={21} /></span><div><p>읽지 않은 건의</p><strong>{suggestions.filter((suggestion) => !suggestion.read_at && suggestion.status === "ACTIVE").length}</strong><small>익명으로 보호됨</small></div></Card></> : currentUser.role === "MENTOR" ? <><Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>담당 인턴</p><strong>{assignedInterns.length}</strong><small>주·서브 멘토 포함</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>제출 평가</p><strong>{evaluations.length}</strong><small>내가 작성한 기록</small></div></Card></> : <><Card className="stat-card"><span className="stat-icon green"><BriefcaseBusiness size={21} /></span><div><p>배정 과제</p><strong>{tasks.length}</strong><small>현재 진행 과제</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>작성 보고서</p><strong>{reports.length}</strong><small>저장된 주차 기록</small></div></Card></>}
       </div>
 
-      {currentUser.role === "MENTOR" ? (
-        <Card>
-          <SectionTitle title="배정된 인턴" description="담당 인턴의 업무 기록과 평가로 바로 이동하세요." />
-          <div className="intern-card-grid">
-            {assignedInterns.map((intern) => intern ? (
-              <article className="intern-card" key={intern.id}>
-                <div className="intern-card-head"><Avatar name={intern.name} /><div><strong>{intern.name}</strong><span>{intern.department} · {intern.projectGroup}</span></div></div>
-                <div className="intern-progress"><span>실습 진행</span><strong>{week}주차 / {currentCohort.totalWeeks}주</strong></div><ProgressBar value={((week ?? 1) / currentCohort.totalWeeks) * 100} />
-                <div className="card-actions"><Link href="/mentor/evaluations">중간 평가</Link><Link href="/mentor/weekly-reports">주간 업무 기록</Link></div>
-              </article>
-            ) : null)}
-          </div>
-        </Card>
-      ) : null}
+      {currentUser.role === "MENTOR" ? <Card><SectionTitle title="배정 인턴" description="Supabase 멘토 배정 기준으로 표시합니다." /><div className="intern-card-grid">{assignedInterns.map((intern) => <article className="intern-card" key={intern.id}><div className="intern-card-head"><Avatar name={intern.name} /><div><strong>{intern.name}</strong><span>{intern.department} · {intern.project_group}</span></div></div><div className="intern-progress"><span>실습 진행</span><strong>{week ?? 0}주차 / {currentCohort.total_weeks}주</strong></div><ProgressBar value={progress} /><div className="card-actions"><Link href="/mentor/evaluations">중간 평가</Link><Link href="/mentor/weekly-reports">주간 업무 기록</Link></div></article>)}</div></Card> : null}
 
-      {currentUser.role === "INTERN" ? (
-        <Card className="mentor-strip">
-          <SectionTitle title="나의 멘토" description="과제와 피드백을 함께하는 담당 멘토입니다." />
-          <div className="mentor-list">
-            {primaryMentor ? <div><Avatar name={primaryMentor.name} /><span><small>담당 멘토</small><strong>{primaryMentor.name}</strong><em>{primaryMentor.department}</em></span></div> : null}
-            {secondaryMentor ? <div><Avatar name={secondaryMentor.name} /><span><small>서브 멘토</small><strong>{secondaryMentor.name}</strong><em>{secondaryMentor.department}</em></span></div> : null}
-          </div>
-        </Card>
-      ) : null}
+      {currentUser.role === "INTERN" ? <Card className="mentor-strip"><SectionTitle title="나의 멘토" description="멘토 배정은 Supabase 관리자 설정에서 관리됩니다." /><div className="mentor-list">{primaryMentor ? <div><Avatar name={primaryMentor.name} /><span><small>담당 멘토</small><strong>{primaryMentor.name}</strong><em>{primaryMentor.department}</em></span></div> : null}{secondaryMentor ? <div><Avatar name={secondaryMentor.name} /><span><small>서브 멘토</small><strong>{secondaryMentor.name}</strong><em>{secondaryMentor.department}</em></span></div> : null}</div></Card> : null}
 
       <div className="dashboard-columns">
-        <Card>
-          <SectionTitle title="오늘의 To-do" description="내가 등록한 비공개 일정입니다." action={<Link className="text-link" href="/calendar">전체 보기 <ArrowRight size={15} /></Link>} />
-          {todos.length ? <div className="todo-list">{todos.slice(0, 4).map((todo) => (
-            <button key={todo.id} onClick={() => completeTodo(todo.id)}><Circle size={18} /><span><strong>{todo.title}</strong><small>{todo.startDate} · 나만 보기</small></span></button>
-          ))}</div> : <EmptyState title="오늘의 To-do가 없습니다." description="캘린더에서 새로운 할 일을 추가해 보세요." />}
-        </Card>
-        <Card>
-          <SectionTitle title="다가오는 주요 일정" description="내가 볼 수 있는 가까운 일정입니다." action={<Link className="text-link" href="/calendar">캘린더 <ArrowRight size={15} /></Link>} />
-          <div className="schedule-list">{upcoming.map((event) => (
-            <div key={event.id} className="schedule-row"><time><strong>{event.startDate.slice(8)}</strong><small>8월</small></time><span><strong>{event.title}</strong><small>{event.description}</small></span>{event.isImportant ? <Badge tone="red">중요</Badge> : <Badge tone="blue">일정</Badge>}</div>
-          ))}</div>
-        </Card>
+        <Card><SectionTitle title="오늘의 To-do" description="캘린더의 개인 To-do를 표시합니다." action={<Link className="text-link" href="/calendar">전체 보기 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : todos.length ? <div className="todo-list">{todos.slice(0, 4).map((todo) => <button key={todo.id} onClick={() => void completeTodo(todo)}><Circle size={18} /><span><strong>{todo.title}</strong><small>{koreaDate(todo.start_at)} · 나만 보기</small></span></button>)}</div> : <EmptyState title="오늘의 To-do가 없습니다." description="캘린더에서 새 할 일을 추가해 보세요." />}</Card>
+        <Card><SectionTitle title="다가오는 주요 일정" description="권한에 따라 조회되는 실제 일정입니다." action={<Link className="text-link" href="/calendar">캘린더 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : upcoming.length ? <div className="schedule-list">{upcoming.map((event) => <div key={event.id} className="schedule-row"><time><strong>{koreaDate(event.start_at).slice(8)}</strong><small>{displayDate(event.start_at)}</small></time><span><strong>{event.title}</strong><small>{event.description}</small></span>{event.is_important ? <Badge tone="red">중요</Badge> : <Badge tone="blue">일정</Badge>}</div>)}</div> : <EmptyState title="다가오는 일정이 없습니다." description="캘린더에서 일정을 확인해 주세요." />}</Card>
       </div>
 
-      <Card>
-        <SectionTitle title="최근 공지" description="놓치면 안 되는 프로그램 안내입니다." action={<Link className="text-link" href="/notices">공지사항 전체 보기 <ArrowRight size={15} /></Link>} />
-        <div className="notice-compact-list">{notices.map((notice) => (
-          <Link href="/notices" key={notice.id}><span>{notice.important ? <Badge tone="red">중요</Badge> : <Badge tone="blue">안내</Badge>}<strong>{notice.title}</strong></span><time>{notice.createdAt}</time></Link>
-        ))}</div>
-      </Card>
+      <Card><SectionTitle title="최근 공지" description="권한에 따라 조회되는 공지입니다." action={<Link className="text-link" href="/notices">공지사항 전체 보기 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : notices.length ? <div className="notice-compact-list">{notices.map((notice) => <Link href="/notices" key={notice.id}><span>{notice.is_important ? <Badge tone="red">중요</Badge> : <Badge tone="blue">안내</Badge>}<strong>{notice.title}</strong></span><time>{displayDate(notice.created_at)}</time></Link>)}</div> : <EmptyState title="표시할 공지가 없습니다." description="새 공지가 등록되면 이곳에 표시됩니다." />}</Card>
     </div>
   );
 }
