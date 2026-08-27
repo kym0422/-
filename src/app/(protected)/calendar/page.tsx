@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight, CircleHelp, Plus, Trash2 } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, CircleHelp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAppStore } from "@/components/app-store";
 import { Badge, Button, Card, EmptyState, Field, Modal, PageHeader, SectionTitle } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +31,7 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [saving, setSaving] = useState(false);
@@ -63,8 +64,16 @@ export default function CalendarPage() {
   const todos = events.filter((event) => event.eventType === "TODO" && !event.isCompleted);
 
   function openCreate(date = today) {
+    setEditingEvent(null);
     setForm({ title: "", description: "", startDate: date, endDate: date, eventType: "SCHEDULE", visibility: "ALL", isImportant: false });
     setError(""); setFormOpen(true);
+  }
+  function openEdit(item: CalendarEvent) {
+    setEditingEvent(item);
+    setForm({ title: item.title, description: item.description ?? "", startDate: item.startDate, endDate: item.endDate, eventType: item.eventType, visibility: item.visibility, isImportant: item.isImportant });
+    setSelected(null);
+    setError("");
+    setFormOpen(true);
   }
   async function saveEvent(event: React.FormEvent) {
     event.preventDefault();
@@ -72,7 +81,10 @@ export default function CalendarPage() {
     if (form.endDate < form.startDate) { setError("종료일은 시작일보다 빠를 수 없습니다."); return; }
     setSaving(true);
     const visibility = form.eventType === "TODO" ? "PRIVATE" : form.visibility;
-    const { error: insertError } = await createClient().from("calendar_events").insert({ title: form.title.trim(), description: form.description.trim() || null, start_at: `${form.startDate}T00:00:00+09:00`, end_at: `${form.endDate}T23:59:59.999+09:00`, event_type: form.eventType, visibility, is_important: form.isImportant, is_completed: false, created_by: user.id });
+    const eventPayload = { title: form.title.trim(), description: form.description.trim() || null, start_at: `${form.startDate}T00:00:00+09:00`, end_at: `${form.endDate}T23:59:59.999+09:00`, event_type: form.eventType, visibility, is_important: form.isImportant };
+    const { error: insertError } = editingEvent
+      ? await createClient().from("calendar_events").update(eventPayload).eq("id", editingEvent.id)
+      : await createClient().from("calendar_events").insert({ ...eventPayload, is_completed: false, created_by: user.id });
     setSaving(false);
     if (insertError) { setError("일정을 저장하지 못했습니다. 작성 권한을 확인해 주세요."); return; }
     setFormOpen(false); notify(form.eventType === "TODO" ? "개인 To-do를 등록했습니다." : "일정을 등록했습니다.", "success"); await loadEvents();
@@ -104,8 +116,8 @@ export default function CalendarPage() {
       <Card><SectionTitle title="다가오는 일정" description="내게 공개된 가까운 일정입니다." />{upcoming.length ? <div className="timeline-list">{upcoming.map((item) => <button key={item.id} onClick={() => setSelected(item)}><time>{item.startDate.slice(5).replace("-", ".")}</time><span><strong>{item.title}</strong><small>{item.description}</small></span>{item.isImportant && <Badge tone="red">중요</Badge>}</button>)}</div> : <EmptyState title="다가오는 일정이 없습니다." description="새 일정을 등록해 보세요." />}</Card>
       <Card><SectionTitle title="다가오는 To-do" description="본인만 볼 수 있는 개인 할 일입니다." />{todos.length ? <div className="todo-list">{todos.map((item) => <button key={item.id} onClick={() => void toggleTodo(item)} className={item.isCompleted ? "completed" : ""}><span className="todo-check">✓</span><span><strong>{item.title}</strong><small>{item.startDate}</small></span></button>)}</div> : <EmptyState title="남은 To-do가 없습니다." description="개인 할 일을 추가해 보세요." />}</Card>
     </div>
-    <Modal open={formOpen} onClose={() => setFormOpen(false)} title="새 일정 추가" description="To-do는 자동으로 나만 보기로 저장됩니다."><form className="form-stack" onSubmit={(event) => void saveEvent(event)}><div className="segmented"><button type="button" className={form.eventType === "SCHEDULE" ? "active" : ""} onClick={() => setForm({ ...form, eventType: "SCHEDULE" })}>일정</button><button type="button" className={form.eventType === "TODO" ? "active" : ""} onClick={() => setForm({ ...form, eventType: "TODO", visibility: "PRIVATE" })}>To-do</button></div><Field label="일정명"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="일정명을 입력하세요." /></Field><Field label="설명"><textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field><div className="form-grid"><Field label="시작일"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></Field><Field label="종료일"><input type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} /></Field></div><Field label="공개 범위"><select disabled={form.eventType === "TODO"} value={form.eventType === "TODO" ? "PRIVATE" : form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.value as Visibility })}>{Object.entries(visibilityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field><label className="check-row"><input type="checkbox" checked={form.isImportant} onChange={(event) => setForm({ ...form, isImportant: event.target.checked })} /><span><strong>중요 일정으로 표시</strong><small>캘린더에서 붉은 색으로 강조됩니다.</small></span></label>{error && <p className="form-error">{error}</p>}<div className="modal-actions"><Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>취소</Button><Button type="submit" disabled={saving}>{saving ? "저장 중..." : "저장"}</Button></div></form></Modal>
-    <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.title ?? "일정 상세"}>{selected && <div className="event-detail"><div className="detail-badges"><Badge tone={selected.eventType === "TODO" ? "amber" : "blue"}>{selected.eventType === "TODO" ? "To-do" : "일정"}</Badge>{selected.isImportant && <Badge tone="red">중요</Badge>}</div><dl><dt>기간</dt><dd>{selected.startDate} ~ {selected.endDate}</dd><dt>공개 범위</dt><dd>{visibilityLabels[selected.visibility]}</dd><dt>설명</dt><dd>{selected.description || "등록된 설명이 없습니다."}</dd></dl>{selected.createdBy === user.id ? <div className="modal-actions"><Button variant="danger" onClick={() => void deleteEvent(selected)}><Trash2 size={16} /> 삭제</Button></div> : <p className="read-only-note">다른 사용자가 등록한 공개 일정은 조회만 가능합니다.</p>}</div>}</Modal>
+    <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editingEvent ? "일정 정보 수정" : "새 일정 추가"} description="To-do는 자동으로 나만 보기로 저장됩니다."><form className="form-stack" onSubmit={(event) => void saveEvent(event)}><div className="segmented"><button type="button" className={form.eventType === "SCHEDULE" ? "active" : ""} onClick={() => setForm({ ...form, eventType: "SCHEDULE" })}>일정</button><button type="button" className={form.eventType === "TODO" ? "active" : ""} onClick={() => setForm({ ...form, eventType: "TODO", visibility: "PRIVATE" })}>To-do</button></div><Field label="일정명"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="일정명을 입력하세요." /></Field><Field label="설명"><textarea rows={3} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field><div className="form-grid"><Field label="시작일"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></Field><Field label="종료일"><input type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} /></Field></div><Field label="공개 범위"><select disabled={form.eventType === "TODO"} value={form.eventType === "TODO" ? "PRIVATE" : form.visibility} onChange={(event) => setForm({ ...form, visibility: event.target.value as Visibility })}>{Object.entries(visibilityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field><label className="check-row"><input type="checkbox" checked={form.isImportant} onChange={(event) => setForm({ ...form, isImportant: event.target.checked })} /><span><strong>중요 일정으로 표시</strong><small>캘린더에서 붉은 색으로 강조됩니다.</small></span></label>{error && <p className="form-error">{error}</p>}<div className="modal-actions"><Button type="button" variant="secondary" onClick={() => setFormOpen(false)}>취소</Button><Button type="submit" disabled={saving}>{saving ? "저장 중..." : editingEvent ? "수정 저장" : "저장"}</Button></div></form></Modal>
+    <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.title ?? "일정 상세"}>{selected && <div className="event-detail"><div className="detail-badges"><Badge tone={selected.eventType === "TODO" ? "amber" : "blue"}>{selected.eventType === "TODO" ? "To-do" : "일정"}</Badge>{selected.isImportant && <Badge tone="red">중요</Badge>}</div><dl><dt>기간</dt><dd>{selected.startDate} ~ {selected.endDate}</dd><dt>공개 범위</dt><dd>{visibilityLabels[selected.visibility]}</dd><dt>설명</dt><dd>{selected.description || "등록된 설명이 없습니다."}</dd></dl>{selected.createdBy === user.id ? <div className="modal-actions"><Button variant="secondary" onClick={() => openEdit(selected)}><Pencil size={16} /> 수정</Button><Button variant="danger" onClick={() => void deleteEvent(selected)}><Trash2 size={16} /> 삭제</Button></div> : <p className="read-only-note">다른 사용자가 등록한 공개 일정은 조회만 가능합니다.</p>}</div>}</Modal>
     <Modal open={helpOpen} onClose={() => setHelpOpen(false)} title="캘린더 사용 방법"><div className="help-list"><p><CalendarCheck size={20} /><span><strong>공개 일정</strong>역할과 공개 범위가 맞는 구성원에게 표시됩니다.</span></p><p><CalendarCheck size={20} /><span><strong>개인 To-do</strong>작성자 본인에게만 표시되며 완료 처리할 수 있습니다.</span></p><p><CalendarCheck size={20} /><span><strong>수정과 삭제</strong>본인이 등록한 일정에만 허용됩니다.</span></p></div></Modal>
   </>;
 }

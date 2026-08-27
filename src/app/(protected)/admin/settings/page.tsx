@@ -78,6 +78,7 @@ export default function SettingsPage() {
   const [editingUser, setEditingUser] = useState<ProfileRow | null>(null);
   const [userForm, setUserForm] = useState<UserForm>(emptyUserForm);
   const [cohortOpen, setCohortOpen] = useState(false);
+  const [editingCohort, setEditingCohort] = useState<CohortRow | null>(null);
   const [cohortForm, setCohortForm] = useState({ name: "", startDate: "", endDate: "", totalWeeks: 8, status: "UPCOMING" as Cohort["status"] });
   const [assignmentOpen, setAssignmentOpen] = useState(false);
   const [assignmentIntern, setAssignmentIntern] = useState("");
@@ -224,6 +225,19 @@ export default function SettingsPage() {
     }
   }
 
+  function openCohort(cohort?: CohortRow) {
+    setEditingCohort(cohort ?? null);
+    setCohortForm(cohort ? {
+      name: cohort.name,
+      startDate: cohort.start_date,
+      endDate: cohort.end_date,
+      totalWeeks: cohort.total_weeks,
+      status: cohort.status,
+    } : { name: "", startDate: "", endDate: "", totalWeeks: 8, status: "UPCOMING" });
+    setError("");
+    setCohortOpen(true);
+  }
+
   async function saveCohort(event: React.FormEvent) {
     event.preventDefault();
     if (!currentUser || !cohortForm.name.trim() || !cohortForm.startDate || !cohortForm.endDate || cohortForm.endDate < cohortForm.startDate) {
@@ -233,14 +247,16 @@ export default function SettingsPage() {
 
     setSaving(true);
     setError("");
-    const { error: insertError } = await createClient().from("cohorts").insert({
+    const cohortPayload = {
       name: cohortForm.name.trim(),
       start_date: cohortForm.startDate,
       end_date: cohortForm.endDate,
       total_weeks: cohortForm.totalWeeks,
       status: cohortForm.status,
-      created_by: currentUser.id,
-    });
+    };
+    const { error: insertError } = editingCohort
+      ? await createClient().from("cohorts").update(cohortPayload).eq("id", editingCohort.id)
+      : await createClient().from("cohorts").insert({ ...cohortPayload, created_by: currentUser.id });
     setSaving(false);
     if (insertError) {
       setError(insertError.message);
@@ -319,8 +335,8 @@ export default function SettingsPage() {
     </Card> : null}
 
     {tab === "cohorts" ? <Card>
-      <SectionTitle title="기수 관리" description="기수 변경 사항은 안전하게 보존됩니다." action={<Button onClick={() => { setError(""); setCohortOpen(true); }}><Plus size={17} /> 신규 기수</Button>} />
-      {loading ? <p className="p-5 text-sm text-slate-500">기수 정보를 불러오는 중입니다.</p> : <div className="cohort-grid">{cohorts.map((cohort) => <article key={cohort.id}><div><Badge tone={cohort.status === "ACTIVE" ? "green" : cohort.status === "UPCOMING" ? "blue" : "gray"}>{cohort.status === "ACTIVE" ? "진행 중" : cohort.status === "UPCOMING" ? "예정" : "종료"}</Badge><h2>{cohort.name}</h2><p>{cohort.start_date} ~ {cohort.end_date}</p></div><dl><dt>총 실습 주차</dt><dd>{cohort.total_weeks}주</dd><dt>소속 인턴</dt><dd>{interns.filter((profile) => profile.cohort_id === cohort.id).length}명</dd></dl></article>)}</div>}
+      <SectionTitle title="기수 관리" description="기수 변경 사항은 안전하게 보존됩니다." action={<Button onClick={() => openCohort()}><Plus size={17} /> 신규 기수</Button>} />
+      {loading ? <p className="p-5 text-sm text-slate-500">기수 정보를 불러오는 중입니다.</p> : <div className="cohort-grid">{cohorts.map((cohort) => <article key={cohort.id}><div><Badge tone={cohort.status === "ACTIVE" ? "green" : cohort.status === "UPCOMING" ? "blue" : "gray"}>{cohort.status === "ACTIVE" ? "진행 중" : cohort.status === "UPCOMING" ? "예정" : "종료"}</Badge><h2>{cohort.name}</h2><p>{cohort.start_date} ~ {cohort.end_date}</p></div><dl><dt>총 실습 주차</dt><dd>{cohort.total_weeks}주</dd><dt>소속 인턴</dt><dd>{interns.filter((profile) => profile.cohort_id === cohort.id).length}명</dd></dl><Button variant="secondary" onClick={() => openCohort(cohort)}><Pencil size={16} /> 정보 수정</Button></article>)}</div>}
     </Card> : null}
 
     {tab === "mentors" ? <Card>
@@ -343,7 +359,7 @@ export default function SettingsPage() {
       </form>
     </Modal>
 
-    <Modal open={cohortOpen} onClose={() => !saving && setCohortOpen(false)} title="신규 기수 생성"><form className="form-stack" onSubmit={(event) => void saveCohort(event)}><Field label="기수명"><input value={cohortForm.name} onChange={(event) => setCohortForm({ ...cohortForm, name: event.target.value })} placeholder="예: 2027년 1기" /></Field><div className="form-grid"><Field label="시작일"><input type="date" value={cohortForm.startDate} onChange={(event) => setCohortForm({ ...cohortForm, startDate: event.target.value })} /></Field><Field label="종료일"><input type="date" value={cohortForm.endDate} onChange={(event) => setCohortForm({ ...cohortForm, endDate: event.target.value })} /></Field></div><div className="form-grid"><Field label="총 실습 주차"><input type="number" min={1} max={104} value={cohortForm.totalWeeks} onChange={(event) => setCohortForm({ ...cohortForm, totalWeeks: Number(event.target.value) })} /></Field><Field label="상태"><select value={cohortForm.status} onChange={(event) => setCohortForm({ ...cohortForm, status: event.target.value as Cohort["status"] })}><option value="UPCOMING">예정</option><option value="ACTIVE">진행 중</option><option value="COMPLETED">종료</option></select></Field></div>{error ? <p className="form-error">{error}</p> : null}<div className="modal-actions"><Button type="button" variant="secondary" disabled={saving} onClick={() => setCohortOpen(false)}>취소</Button><Button type="submit" disabled={saving}>{saving ? "생성 중..." : "기수 생성"}</Button></div></form></Modal>
+    <Modal open={cohortOpen} onClose={() => !saving && setCohortOpen(false)} title={editingCohort ? "기수 정보 수정" : "신규 기수 생성"}><form className="form-stack" onSubmit={(event) => void saveCohort(event)}><Field label="기수명"><input value={cohortForm.name} onChange={(event) => setCohortForm({ ...cohortForm, name: event.target.value })} placeholder="예: 2027년 1기" /></Field><div className="form-grid"><Field label="시작일"><input type="date" value={cohortForm.startDate} onChange={(event) => setCohortForm({ ...cohortForm, startDate: event.target.value })} /></Field><Field label="종료일"><input type="date" value={cohortForm.endDate} onChange={(event) => setCohortForm({ ...cohortForm, endDate: event.target.value })} /></Field></div><div className="form-grid"><Field label="총 실습 주차"><input type="number" min={1} max={104} value={cohortForm.totalWeeks} onChange={(event) => setCohortForm({ ...cohortForm, totalWeeks: Number(event.target.value) })} /></Field><Field label="상태"><select value={cohortForm.status} onChange={(event) => setCohortForm({ ...cohortForm, status: event.target.value as Cohort["status"] })}><option value="UPCOMING">예정</option><option value="ACTIVE">진행 중</option><option value="COMPLETED">종료</option></select></Field></div>{error ? <p className="form-error">{error}</p> : null}<div className="modal-actions"><Button type="button" variant="secondary" disabled={saving} onClick={() => setCohortOpen(false)}>취소</Button><Button type="submit" disabled={saving}>{saving ? "저장 중..." : editingCohort ? "수정 저장" : "기수 생성"}</Button></div></form></Modal>
 
     <Modal open={assignmentOpen} onClose={() => !saving && setAssignmentOpen(false)} title="멘토 배정" description={`${profiles.find((profile) => profile.id === assignmentIntern)?.name ?? "인턴"}의 담당 멘토를 지정합니다.`}><form className="form-stack" onSubmit={(event) => void saveAssignment(event)}><Field label="담당 멘토"><select value={assignmentForm.primaryMentorId} onChange={(event) => setAssignmentForm({ ...assignmentForm, primaryMentorId: event.target.value })}><option value="">선택하세요</option>{mentors.map((mentor) => <option value={mentor.id} key={mentor.id}>{mentor.name} · {mentor.department}</option>)}</select></Field><Field label="서브 멘토"><select value={assignmentForm.secondaryMentorId} onChange={(event) => setAssignmentForm({ ...assignmentForm, secondaryMentorId: event.target.value })}><option value="">미배정</option>{mentors.map((mentor) => <option value={mentor.id} key={mentor.id}>{mentor.name} · {mentor.department}</option>)}</select></Field>{error ? <p className="form-error">{error}</p> : null}<div className="modal-actions"><Button type="button" variant="secondary" disabled={saving} onClick={() => setAssignmentOpen(false)}>취소</Button><Button type="submit" disabled={saving}>{saving ? "저장 중..." : "배정 저장"}</Button></div></form></Modal>
   </>;
