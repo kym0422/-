@@ -77,7 +77,6 @@ export function ProtectedApp({ children }: { children: ReactNode }) {
           <button className="icon-button mobile-menu" onClick={() => setMobileOpen(true)} aria-label="메뉴 열기"><Menu size={21} /></button>
           <div className="breadcrumb">현장실습 프로그램 <span>/</span> {getCurrentLabel(pathname, currentUser.role)}</div>
           <div className="topbar-actions">
-            <button className="language-button" aria-label="언어 선택" onClick={() => notify("현재 버전은 한국어를 기본으로 제공합니다.", "info")}>KO <ChevronDown size={14} /></button>
             <button className="icon-button notification-button" aria-label="알림" onClick={() => notify("알림 센터는 Phase 2에서 제공할 예정입니다.", "info")}><Bell size={19} /><i /></button>
             <div className="profile-menu-wrap">
               <button className="profile-button" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
