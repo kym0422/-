@@ -52,7 +52,7 @@ export function BoardPage({ category }: { category: Resource["category"] }) {
       .select("id,resource_type,title,description,original_file_name,storage_path,mime_type,file_size_bytes,uploaded_by,uploader_display_name,created_at")
       .eq("resource_type", category)
       .order("created_at", { ascending: false });
-    if (queryError) notify("자료 목록을 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+    if (queryError) notify("자료 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     else setResources((data ?? []) as ResourceRow[]);
     setLoading(false);
   }, [category, notify]);
@@ -96,7 +96,7 @@ export function BoardPage({ category }: { category: Resource["category"] }) {
     }
 
     setUploading(false); setUploadOpen(false); setForm({ title: "", description: "", file: null });
-    notify("자료와 파일이 Supabase에 업로드되었습니다.", "success");
+    notify("자료와 파일을 업로드했습니다.", "success");
     await loadResources();
   }
 
@@ -128,6 +128,6 @@ export function BoardPage({ category }: { category: Resource["category"] }) {
         return <article className="resource-card" key={resource.id}><div className="resource-icon"><FileIcon size={25} /></div><div className="resource-copy"><Badge tone={isTemplates ? "blue" : "purple"}>{isTemplates ? "양식" : "참고 자료"}</Badge><h2>{resource.title}</h2><p>{resource.description}</p><div><span>{resource.original_file_name}</span><span>{formatBytes(resource.file_size_bytes)} · {displayDate(resource.created_at)} · {resource.uploader_display_name}</span></div></div><div className="resource-actions"><Button variant="secondary" onClick={() => void download(resource)}><Download size={16} /> 다운로드</Button>{user.role === "ADMIN" || resource.uploaded_by === user.id ? <button className="icon-button danger-icon" onClick={() => void remove(resource)} aria-label={`${resource.title} 삭제`}><Trash2 size={17} /></button> : null}</div></article>;
       })}</div> : <EmptyState title="등록된 자료가 없습니다." description="모두와 공유할 첫 자료를 업로드해 보세요." action={<Button onClick={() => setUploadOpen(true)}><UploadCloud size={17} /> 업로드</Button>} />}
     </Card>
-    <Modal open={uploadOpen} onClose={() => !uploading && setUploadOpen(false)} title="자료 업로드" description="파일과 자료 정보가 Supabase에 함께 저장됩니다."><form className="form-stack" onSubmit={(event) => void upload(event)}><Field label="자료 제목"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="자료 제목" /></Field><Field label="설명"><textarea rows={4} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field><Field label="파일" hint="문서, PDF, 이미지, 압축 파일 · 최대 25MB"><div className="file-drop" onClick={() => fileRef.current?.click()}><UploadCloud size={26} /><strong>{form.file?.name ?? "파일을 선택하세요"}</strong><span>{form.file ? formatBytes(form.file.size) : "클릭하여 파일 찾아보기"}</span></div><input className="sr-only" ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip" onChange={(event) => setForm({ ...form, file: event.target.files?.[0] ?? null })} /></Field>{error && <p className="form-error">{error}</p>}<div className="modal-actions"><Button type="button" variant="secondary" disabled={uploading} onClick={() => setUploadOpen(false)}>취소</Button><Button type="submit" disabled={uploading}>{uploading ? "업로드 중..." : "업로드"}</Button></div></form></Modal>
+    <Modal open={uploadOpen} onClose={() => !uploading && setUploadOpen(false)} title="자료 업로드" description="파일과 자료 정보가 함께 저장됩니다."><form className="form-stack" onSubmit={(event) => void upload(event)}><Field label="자료 제목"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="자료 제목" /></Field><Field label="설명"><textarea rows={4} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></Field><Field label="파일" hint="문서, PDF, 이미지, 압축 파일 · 최대 25MB"><div className="file-drop" onClick={() => fileRef.current?.click()}><UploadCloud size={26} /><strong>{form.file?.name ?? "파일을 선택하세요"}</strong><span>{form.file ? formatBytes(form.file.size) : "클릭하여 파일 찾아보기"}</span></div><input className="sr-only" ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip" onChange={(event) => setForm({ ...form, file: event.target.files?.[0] ?? null })} /></Field>{error && <p className="form-error">{error}</p>}<div className="modal-actions"><Button type="button" variant="secondary" disabled={uploading} onClick={() => setUploadOpen(false)}>취소</Button><Button type="submit" disabled={uploading}>{uploading ? "업로드 중..." : "업로드"}</Button></div></form></Modal>
   </>;
 }

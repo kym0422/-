@@ -94,7 +94,7 @@ export default function SettingsPage() {
     ]);
 
     if (profileError || cohortError || assignmentError) {
-      notify("관리자 데이터를 불러오지 못했습니다. 권한과 Supabase 연결을 확인해 주세요.", "error");
+      notify("관리자 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     } else {
       setProfiles((profileData ?? []) as ProfileRow[]);
       setCohorts((cohortData ?? []) as CohortRow[]);
@@ -185,7 +185,7 @@ export default function SettingsPage() {
       await persistUser(userPayload(editingUser?.id, editingUser?.is_active ?? true), editingUser ? "PATCH" : "POST");
       setUserOpen(false);
       await Promise.all([loadData(), refresh()]);
-      notify(editingUser ? "사용자 정보를 Supabase에 저장했습니다." : "인증 계정과 프로필을 생성했습니다.");
+      notify(editingUser ? "사용자 정보를 저장했습니다." : "인증 계정과 프로필을 생성했습니다.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "사용자 정보를 저장하지 못했습니다.");
     } finally {
@@ -249,7 +249,7 @@ export default function SettingsPage() {
 
     setCohortOpen(false);
     await Promise.all([loadData(), refresh()]);
-    notify("새 기수를 Supabase에 생성했습니다.");
+    notify("새 기수를 생성했습니다.");
   }
 
   function openAssignment(internId: string) {
@@ -293,7 +293,7 @@ export default function SettingsPage() {
 
     setAssignmentOpen(false);
     await Promise.all([loadData(), refresh()]);
-    notify("멘토 배정을 Supabase에 저장했습니다.");
+    notify("멘토 배정을 저장했습니다.");
   }
 
   if (!currentUser) return null;
@@ -302,7 +302,7 @@ export default function SettingsPage() {
     <PageHeader
       eyebrow="ADMINISTRATION"
       title="관리자 설정"
-      description="사용자, 기수, 멘토 배정을 Supabase 데이터로 관리합니다."
+      description="사용자, 기수, 멘토 배정을 관리합니다."
       actions={<Button variant="secondary" onClick={() => void loadData()}><RefreshCcw size={16} /> 데이터 새로고침</Button>}
     />
     <div className="settings-tabs">
@@ -315,16 +315,16 @@ export default function SettingsPage() {
       <SectionTitle title="회원 정보 관리" description={`활성 ${activeProfiles.length}명 · 비활성 ${profiles.length - activeProfiles.length}명`} action={<Button onClick={() => openUser()}><UserPlus size={17} /> 사용자 생성</Button>} />
       {loading ? <p className="p-5 text-sm text-slate-500">사용자 정보를 불러오는 중입니다.</p> : profiles.length ? <div className="table-scroll"><table className="data-table"><thead><tr><th>사용자</th><th>역할</th><th>소속 부서</th><th>기수</th><th>프로젝트 조</th><th>상태</th><th>작업</th></tr></thead><tbody>
         {profiles.map((profile) => <tr key={profile.id} className={!profile.is_active ? "inactive-row" : ""}><td><div className="table-user"><Avatar name={profile.name} size="small" /><span><strong>{profile.name}</strong><small>{profile.email}</small></span></div></td><td><Badge tone={profile.role === "ADMIN" ? "purple" : profile.role === "MENTOR" ? "blue" : "green"}>{roleLabels[profile.role]}</Badge></td><td>{profile.department ?? "-"}</td><td>{cohorts.find((cohort) => cohort.id === profile.cohort_id)?.name ?? "-"}</td><td>{profile.project_group ?? "-"}</td><td><Badge tone={profile.is_active ? "green" : "gray"}>{profile.is_active ? "활성" : "비활성"}</Badge></td><td><div className="table-actions"><button className="icon-button" onClick={() => openUser(profile)} aria-label={`${profile.name} 수정`}><Pencil size={16} /></button><button className={`icon-button ${profile.is_active ? "danger-icon" : ""}`} onClick={() => void toggleActive(profile)} aria-label={`${profile.name} ${profile.is_active ? "비활성화" : "활성화"}`}>{profile.is_active ? <Archive size={16} /> : <RotateCcw size={16} />}</button></div></td></tr>)}
-      </tbody></table></div> : <EmptyState title="등록된 사용자가 없습니다." description="Supabase 사용자 데이터를 확인해 주세요." />}
+      </tbody></table></div> : <EmptyState title="등록된 사용자가 없습니다." description="사용자 데이터를 확인해 주세요." />}
     </Card> : null}
 
     {tab === "cohorts" ? <Card>
-      <SectionTitle title="기수 관리" description="기수 변경 사항은 Supabase에 보존됩니다." action={<Button onClick={() => { setError(""); setCohortOpen(true); }}><Plus size={17} /> 신규 기수</Button>} />
+      <SectionTitle title="기수 관리" description="기수 변경 사항은 안전하게 보존됩니다." action={<Button onClick={() => { setError(""); setCohortOpen(true); }}><Plus size={17} /> 신규 기수</Button>} />
       {loading ? <p className="p-5 text-sm text-slate-500">기수 정보를 불러오는 중입니다.</p> : <div className="cohort-grid">{cohorts.map((cohort) => <article key={cohort.id}><div><Badge tone={cohort.status === "ACTIVE" ? "green" : cohort.status === "UPCOMING" ? "blue" : "gray"}>{cohort.status === "ACTIVE" ? "진행 중" : cohort.status === "UPCOMING" ? "예정" : "종료"}</Badge><h2>{cohort.name}</h2><p>{cohort.start_date} ~ {cohort.end_date}</p></div><dl><dt>총 실습 주차</dt><dd>{cohort.total_weeks}주</dd><dt>소속 인턴</dt><dd>{interns.filter((profile) => profile.cohort_id === cohort.id).length}명</dd></dl></article>)}</div>}
     </Card> : null}
 
     {tab === "mentors" ? <Card>
-      <SectionTitle title="멘토 배정" description="인턴별 담당 멘토와 서브 멘토를 Supabase에 저장합니다." />
+      <SectionTitle title="멘토 배정" description="인턴별 담당 멘토와 서브 멘토를 저장합니다." />
       {loading ? <p className="p-5 text-sm text-slate-500">멘토 배정 정보를 불러오는 중입니다.</p> : interns.length ? <div className="assignment-list">{interns.map((intern) => {
         const assignment = assignments.find((item) => item.intern_id === intern.id);
         const primary = profiles.find((profile) => profile.id === assignment?.primary_mentor_id);
@@ -333,7 +333,7 @@ export default function SettingsPage() {
       })}</div> : <EmptyState title="배정 가능한 인턴이 없습니다." description="활성 인턴과 기수 정보를 확인해 주세요." />}
     </Card> : null}
 
-    <Modal open={userOpen} onClose={() => !saving && setUserOpen(false)} title={editingUser ? "사용자 정보 수정" : "새 사용자 생성"} description={editingUser ? "인증 계정과 Supabase 프로필 정보를 함께 갱신합니다." : "관리자가 회사 이메일과 초기 비밀번호를 발급합니다. 인증 메일은 보내지 않습니다."}>
+    <Modal open={userOpen} onClose={() => !saving && setUserOpen(false)} title={editingUser ? "사용자 정보 수정" : "새 사용자 생성"} description={editingUser ? "인증 계정과 프로필 정보를 함께 갱신합니다." : "관리자가 회사 이메일과 초기 비밀번호를 발급합니다. 인증 메일은 보내지 않습니다."}>
       <form className="form-stack" onSubmit={(event) => void saveUser(event)}>
         <div className="form-grid"><Field label="이름"><input value={userForm.name} onChange={(event) => setUserForm({ ...userForm, name: event.target.value })} /></Field><Field label="이메일"><input type="email" value={userForm.email} onChange={(event) => setUserForm({ ...userForm, email: event.target.value })} /></Field></div>
         {!editingUser ? <Field label="초기 비밀번호" hint="사용자가 첫 로그인 후 변경할 수 있습니다."><input type="password" value={userForm.password} onChange={(event) => setUserForm({ ...userForm, password: event.target.value })} autoComplete="new-password" /></Field> : null}

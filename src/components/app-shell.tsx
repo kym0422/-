@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronDown, LogOut, Menu, ShieldCheck, UserRound, X } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Menu, UserRound, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { icons } from "./icons";
 import { roleLabels, type Role } from "./app-data";
@@ -126,10 +126,6 @@ function Sidebar({ open, onClose, role }: { open: boolean; onClose: () => void; 
             );
           })}
         </nav>
-        <div className="sidebar-footer">
-          <ShieldCheck size={18} />
-          <div><strong>데모 보안 모드</strong><small>역할별 접근 제어 적용</small></div>
-        </div>
       </aside>
     </>
   );

@@ -69,7 +69,7 @@ export default function MembersPage() {
       const roleMembers = profiles.filter((member) => member.role === role);
       return <Card key={role}>
         <SectionTitle title={roleTitles[role]} description={loading ? "불러오는 중..." : `${roleMembers.length}명`} />
-        {loading ? <p className="text-sm text-slate-500">구성원 정보를 불러오는 중입니다.</p> : roleMembers.length === 0 ? <EmptyState title={`등록된 ${roleTitles[role]}가 없습니다.`} description="Supabase에서 활성화된 계정만 표시됩니다." /> : <div className="member-grid">
+        {loading ? <p className="text-sm text-slate-500">구성원 정보를 불러오는 중입니다.</p> : roleMembers.length === 0 ? <EmptyState title={`등록된 ${roleTitles[role]}가 없습니다.`} description="활성화된 계정만 표시됩니다." /> : <div className="member-grid">
           {roleMembers.map((member) => <article className="member-card" key={member.id}>
             <div><Avatar name={member.display_name || member.name} size="large" /><span><h2>{member.display_name || member.name}</h2><p>{member.department || "소속 미지정"}</p><Badge tone={role === "ADMIN" ? "purple" : role === "MENTOR" ? "blue" : "green"}>{roleLabels[role]}</Badge></span></div>
             {role === "INTERN" ? <dl><dt>기수</dt><dd>{member.cohort_name || "미지정"}</dd><dt>프로젝트 조</dt><dd>{member.project_group || "미지정"}</dd><dt>담당 멘토</dt><dd>{member.primary_mentor_name || "미배정"}</dd></dl> : <p className="member-email">연락처는 관리자 설정에서 관리합니다.</p>}

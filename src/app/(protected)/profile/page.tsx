@@ -34,12 +34,12 @@ export default function ProfilePage() {
     setSavingProfile(false);
 
     if (error) {
-      notify("프로필을 저장하지 못했습니다. 권한과 Supabase 연결을 확인해 주세요.", "error");
+      notify("프로필을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       return;
     }
 
     await refresh();
-    notify("프로필을 Supabase에 저장했습니다.");
+    notify("프로필을 저장했습니다.");
   }
 
   async function changePassword(event: React.FormEvent) {
@@ -73,7 +73,7 @@ export default function ProfilePage() {
   }
 
   return <>
-    <PageHeader eyebrow="MY ACCOUNT" title="내 프로필" description="개인 정보와 보안 설정을 Supabase 계정에 저장합니다." />
+    <PageHeader eyebrow="MY ACCOUNT" title="내 프로필" description="개인 정보와 보안 설정을 계정에 저장합니다." />
     <div className="profile-grid">
       <Card className="profile-summary">
         <Avatar name={user.name} size="large" />
@@ -90,7 +90,7 @@ export default function ProfilePage() {
       </Card>
       <div className="profile-forms">
         <Card>
-          <SectionTitle title="기본 정보" description="표시 이름은 Supabase 프로필에 저장됩니다." action={<UserRound size={20} />} />
+          <SectionTitle title="기본 정보" description="표시 이름은 프로필에 저장됩니다." action={<UserRound size={20} />} />
           <form className="form-stack" onSubmit={(event) => void saveProfile(event)}>
             <Field label="이름"><input value={name} onChange={(event) => setName(event.target.value)} /></Field>
             <Field label="이메일" hint="이메일 변경은 관리자에게 문의해 주세요."><input value={user.email} disabled /></Field>
@@ -99,7 +99,7 @@ export default function ProfilePage() {
           </form>
         </Card>
         <Card>
-          <SectionTitle title="비밀번호 변경" description="현재 비밀번호를 확인한 뒤 Supabase Auth에 반영합니다." action={<KeyRound size={20} />} />
+          <SectionTitle title="비밀번호 변경" description="현재 비밀번호를 확인한 뒤 계정 보안에 반영합니다." action={<KeyRound size={20} />} />
           <form className="form-stack" onSubmit={(event) => void changePassword(event)}>
             <Field label="현재 비밀번호"><input type="password" value={passwords.current} onChange={(event) => setPasswords({ ...passwords, current: event.target.value })} autoComplete="current-password" /></Field>
             <div className="form-grid">

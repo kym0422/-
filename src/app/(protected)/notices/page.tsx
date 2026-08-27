@@ -200,7 +200,7 @@ export default function NoticesPage() {
         .order("created_at", { ascending: false });
 
       if (queryError) {
-        notify("공지사항을 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+        notify("공지사항을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         return;
       }
 
@@ -208,7 +208,7 @@ export default function NoticesPage() {
       setNotices(nextNotices);
       setSelected((previous) => previous ? nextNotices.find((notice) => notice.id === previous.id) ?? null : null);
     } catch {
-      notify("공지사항을 불러오지 못했습니다. Supabase 연결을 확인해 주세요.", "error");
+      notify("공지사항을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     } finally {
       setLoading(false);
     }
@@ -347,7 +347,7 @@ export default function NoticesPage() {
 
       await loadNotices();
     } catch {
-      setError("공지사항을 저장하지 못했습니다. Supabase 연결을 확인해 주세요.");
+      setError("공지사항을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSaving(false);
     }
@@ -367,7 +367,7 @@ export default function NoticesPage() {
       notify("공지사항을 삭제했습니다.", "info");
       await loadNotices();
     } catch {
-      notify("공지사항을 삭제하지 못했습니다. Supabase 연결을 확인해 주세요.", "error");
+      notify("공지사항을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     }
   }
 
@@ -459,7 +459,7 @@ export default function NoticesPage() {
       notify("댓글을 등록했습니다.");
       await loadNotices();
     } catch {
-      notify("댓글을 등록하지 못했습니다. Supabase 연결을 확인해 주세요.", "error");
+      notify("댓글을 등록하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     } finally {
       setCommentSaving(false);
     }

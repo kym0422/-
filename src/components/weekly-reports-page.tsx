@@ -166,7 +166,7 @@ export function WeeklyReportsPage({ mode }: { mode: Role }) {
     if (reportError) {
       setReports([]);
       setLoading(false);
-      notify("주간 업무보고를 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+      notify("주간 업무보고를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
       return;
     }
 

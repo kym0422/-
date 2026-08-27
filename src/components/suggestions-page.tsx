@@ -73,7 +73,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
 
     if (queryError) {
       setSuggestions([]);
-      notify("건의 목록을 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+      notify("건의 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     } else {
       setSuggestions(((rows ?? []) as SuggestionRow[]).map(toSuggestion));
     }
@@ -168,7 +168,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
       <span><ShieldCheck size={23} /></span>
       <div>
         <strong>{admin ? "운영자 화면에는 작성자 정보가 표시되지 않습니다." : "익명 건의의 작성자 정보는 별도 보안 경계로 보호됩니다."}</strong>
-        <p>제출·취소·읽음 처리는 Supabase RPC와 RLS로 검증하며, 공개 건의 테이블에는 작성자 식별정보를 저장하지 않습니다.</p>
+        <p>제출·취소·읽음 처리는 권한 정책으로 검증하며, 공개 건의에는 작성자 식별정보를 저장하지 않습니다.</p>
       </div>
       <LockKeyhole size={22} />
     </div>
@@ -200,7 +200,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
         {error ? <p className="form-error">{error}</p> : null}
         <div className="anonymous-confirm">
           <LockKeyhole size={18} />
-          <span><strong>익명 제출 보호</strong><small>Supabase RPC가 계정 식별정보와 건의 공개 데이터를 분리합니다.</small></span>
+          <span><strong>익명 제출 보호</strong><small>계정 식별정보와 공개 건의 데이터를 분리해 보호합니다.</small></span>
         </div>
         <div className="modal-actions">
           <Button type="button" variant="secondary" disabled={saving} onClick={() => setFormOpen(false)}>취소</Button>

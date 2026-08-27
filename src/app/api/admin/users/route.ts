@@ -137,7 +137,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch {
-    return NextResponse.json({ message: "관리자용 Supabase 설정을 확인해 주세요." }, { status: 503 });
+    return NextResponse.json({ message: "관리자 기능 설정을 확인해 주세요." }, { status: 503 });
   }
 }
 
@@ -188,6 +188,6 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ message: "관리자용 Supabase 설정을 확인해 주세요." }, { status: 503 });
+    return NextResponse.json({ message: "관리자 기능 설정을 확인해 주세요." }, { status: 503 });
   }
 }

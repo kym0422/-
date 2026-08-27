@@ -159,7 +159,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     if (!isSupabaseConfigured()) {
-      return { ok: false, message: "Supabase 연결 정보가 설정되지 않았습니다. 관리자에게 문의해 주세요." };
+      return { ok: false, message: "서비스 설정을 확인해 주세요. 관리자에게 문의해 주세요." };
     }
 
     const supabase = createClient();

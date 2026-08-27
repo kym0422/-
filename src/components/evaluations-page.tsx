@@ -91,7 +91,7 @@ export function EvaluationsPage({ admin }: { admin: boolean }) {
 
     if (queryError) {
       setEvaluations([]);
-      notify("평가 기록을 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+      notify("평가 기록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     } else {
       setEvaluations(((rows ?? []) as EvaluationRow[]).map(toEvaluation));
     }
@@ -142,7 +142,7 @@ export function EvaluationsPage({ admin }: { admin: boolean }) {
 
     setFormOpen(false);
     setForm({ title: "", content: "" });
-    notify("중간 평가를 Supabase에 제출했습니다.");
+    notify("중간 평가를 제출했습니다.");
     await loadEvaluations();
   }
 

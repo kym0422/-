@@ -39,7 +39,7 @@ export default function CalendarPage() {
 
   const loadEvents = useCallback(async () => {
     const { data, error: queryError } = await createClient().from("calendar_events").select("id,title,description,start_at,end_at,event_type,visibility,is_important,is_completed,created_by").order("start_at", { ascending: true });
-    if (queryError) notify("일정을 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+    if (queryError) notify("일정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     else setEvents(((data ?? []) as EventRow[]).map(mapEvent));
     setLoading(false);
   }, [notify]);

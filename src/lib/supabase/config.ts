@@ -6,7 +6,7 @@ const publishableKey =
 export function getSupabaseConfig() {
   if (!url || !publishableKey) {
     throw new Error(
-      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+      "서비스 설정이 완료되지 않았습니다. 관리자에게 문의해 주세요.",
     );
   }
 

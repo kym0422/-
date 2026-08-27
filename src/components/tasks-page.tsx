@@ -164,7 +164,7 @@ export function TasksPage({ mode }: { mode: Role }) {
       .order("created_at", { ascending: true });
 
     if (queryError) {
-      notify("과제 목록을 불러오지 못했습니다. Supabase 연결과 권한을 확인해 주세요.", "error");
+      notify("과제 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
     } else {
       setRemoteTasks(((rows ?? []) as TaskRow[]).map(mapTask));
     }
