@@ -11,7 +11,14 @@ export default function DashboardPage() {
   if (!currentUser) return null;
 
   const assignment = data.mentorAssignments.find((item) => item.internId === currentUser.id);
-  const currentCohort = data.cohorts.find((cohort) => cohort.id === (currentUser.cohortId ?? "cohort-2")) ?? data.cohorts[0];
+  const currentCohort = data.cohorts.find((cohort) => cohort.id === currentUser.cohortId) ?? {
+    id: "unassigned",
+    name: "배정된 기수 없음",
+    startDate: "",
+    endDate: "",
+    totalWeeks: 0,
+    status: "UPCOMING" as const,
+  };
   const week = getWeekNumber(currentUser.startDate ?? currentCohort.startDate, currentUser.endDate ?? currentCohort.endDate);
   const visibleEvents = data.events.filter((event) => {
     if (event.eventType === "TODO") return event.createdBy === currentUser.id;

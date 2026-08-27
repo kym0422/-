@@ -80,16 +80,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast>(null);
 
   useEffect(() => {
-    let storedData: AppData | null = null;
     async function hydrate() {
-      try {
-      const serializedData = window.localStorage.getItem(DATA_KEY);
-      if (serializedData) storedData = JSON.parse(serializedData) as AppData;
-    } catch {
       window.localStorage.removeItem(DATA_KEY);
-    }
 
-      if (storedData) setData(storedData);
       if (isSupabaseConfigured()) {
         const { data: { user } } = await createClient().auth.getUser();
         if (user) setCurrentUser(await getActiveProfile(user.id));
