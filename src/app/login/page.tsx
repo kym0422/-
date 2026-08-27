@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
@@ -44,7 +43,7 @@ export default function LoginPage() {
           {error ? <p className="login-error">{error}</p> : null}
           <button className="login-submit" type="submit">로그인 <ArrowRight size={18} /></button>
         </form>
-        <p className="login-signup-link">계정이 없으신가요? <Link href="/signup">회원가입</Link></p>
+        <p className="login-account-notice">계정은 관리자에게 발급받아 주세요.</p>
       </div></section>
     </main>
   );

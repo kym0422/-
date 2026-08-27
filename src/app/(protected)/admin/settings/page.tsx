@@ -333,7 +333,7 @@ export default function SettingsPage() {
       })}</div> : <EmptyState title="배정 가능한 인턴이 없습니다." description="활성 인턴과 기수 정보를 확인해 주세요." />}
     </Card> : null}
 
-    <Modal open={userOpen} onClose={() => !saving && setUserOpen(false)} title={editingUser ? "사용자 정보 수정" : "새 사용자 생성"} description={editingUser ? "인증 계정과 Supabase 프로필 정보를 함께 갱신합니다." : "Supabase Auth 계정과 프로필을 함께 생성합니다."}>
+    <Modal open={userOpen} onClose={() => !saving && setUserOpen(false)} title={editingUser ? "사용자 정보 수정" : "새 사용자 생성"} description={editingUser ? "인증 계정과 Supabase 프로필 정보를 함께 갱신합니다." : "관리자가 회사 이메일과 초기 비밀번호를 발급합니다. 인증 메일은 보내지 않습니다."}>
       <form className="form-stack" onSubmit={(event) => void saveUser(event)}>
         <div className="form-grid"><Field label="이름"><input value={userForm.name} onChange={(event) => setUserForm({ ...userForm, name: event.target.value })} /></Field><Field label="이메일"><input type="email" value={userForm.email} onChange={(event) => setUserForm({ ...userForm, email: event.target.value })} /></Field></div>
         {!editingUser ? <Field label="초기 비밀번호" hint="사용자가 첫 로그인 후 변경할 수 있습니다."><input type="password" value={userForm.password} onChange={(event) => setUserForm({ ...userForm, password: event.target.value })} autoComplete="new-password" /></Field> : null}

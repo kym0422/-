@@ -45,13 +45,24 @@ where auth_user_id = 'AUTH_USER_UUID';
 ```
 
 Create MENTOR and INTERN Auth users in the same way, then let an ADMIN assign
-their final role, active state, cohort, and mentor assignments. A public signup
-flow must never assign an active role by itself.
+their final role, active state, cohort, and mentor assignments. All accounts
+must be created by an ADMIN; there is no public signup flow.
 
 After the first ADMIN account is available, the **관리자 설정** screen can create
 subsequent Auth accounts and their profiles together. This uses the server-only
 `SUPABASE_SERVICE_ROLE_KEY` through `/api/admin/users`; keep that variable out
-of client code and restrict access to the ADMIN role.
+of client code and restrict access to the ADMIN role. The API uses
+`auth.admin.createUser({ email_confirm: true })`, so it does not send an email
+confirmation message. Give the user the initial password securely; they can
+change it from **내 프로필** after signing in.
+
+## Disable public signup in Supabase
+
+Removing the application signup page does not disable Supabase Auth's public
+signup endpoint by itself. In the Supabase Dashboard, open **Authentication →
+General Configuration** and turn off **Allow new users to sign up**. Also turn
+off anonymous sign-ins and any unused OAuth providers. This keeps login limited
+to accounts that an ADMIN created through the administrator settings screen.
 
 ## Access model
 
