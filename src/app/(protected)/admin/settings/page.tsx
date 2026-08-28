@@ -146,7 +146,7 @@ export default function SettingsPage() {
       ...(profileId ? {} : { password: userForm.password }),
       role: userForm.role,
       department: userForm.department.trim(),
-      cohortId: userForm.role === "INTERN" ? userForm.cohortId : null,
+      cohortId: userForm.role === "INTERN" || userForm.role === "MENTOR" ? userForm.cohortId || null : null,
       projectGroup: userForm.role === "INTERN" ? userForm.projectGroup.trim() || null : null,
       startDate: userForm.role === "INTERN" ? userForm.startDate : null,
       endDate: userForm.role === "INTERN" ? userForm.endDate : null,
@@ -176,6 +176,10 @@ export default function SettingsPage() {
     }
     if (userForm.role === "INTERN" && (!userForm.cohortId || !userForm.startDate || !userForm.endDate)) {
       setError("인턴의 기수와 실습 기간을 입력해 주세요.");
+      return;
+    }
+    if (userForm.role === "MENTOR" && !userForm.cohortId) {
+      setError("멘토의 담당 기수를 선택해 주세요.");
       return;
     }
     if (userForm.endDate && userForm.startDate && userForm.endDate < userForm.startDate) {
@@ -363,6 +367,7 @@ export default function SettingsPage() {
         <Field label="전화번호" hint="구성원 페이지에 조회용으로 표시됩니다."><input type="tel" value={userForm.phone} onChange={(event) => setUserForm({ ...userForm, phone: event.target.value })} placeholder="010-0000-0000" /></Field>
         {!editingUser ? <Field label="초기 비밀번호" hint="사용자가 첫 로그인 후 변경할 수 있습니다."><input type="password" value={userForm.password} onChange={(event) => setUserForm({ ...userForm, password: event.target.value })} autoComplete="new-password" /></Field> : null}
         <div className="form-grid"><Field label="역할" hint={editingUser?.id === currentUser.id ? "현재 로그인한 관리자의 역할은 변경할 수 없습니다." : undefined}><select value={userForm.role} disabled={editingUser?.id === currentUser.id} onChange={(event) => setUserForm({ ...userForm, role: event.target.value as Role })}><option value="ADMIN">관리자</option><option value="MENTOR">멘토</option><option value="INTERN">인턴</option></select></Field><Field label="소속 부서"><input value={userForm.department} onChange={(event) => setUserForm({ ...userForm, department: event.target.value })} /></Field></div>
+        {userForm.role === "MENTOR" ? <Field label="담당 기수" hint="멘토가 담당하는 기수를 지정합니다."><select value={userForm.cohortId} onChange={(event) => setUserForm({ ...userForm, cohortId: event.target.value })}><option value="">선택하세요</option>{cohorts.map((cohort) => <option value={cohort.id} key={cohort.id}>{cohort.name}</option>)}</select></Field> : null}
         {userForm.role === "INTERN" ? <><div className="form-grid"><Field label="기수"><select value={userForm.cohortId} onChange={(event) => setUserForm({ ...userForm, cohortId: event.target.value })}><option value="">선택하세요</option>{cohorts.map((cohort) => <option value={cohort.id} key={cohort.id}>{cohort.name}</option>)}</select></Field><Field label="통합 프로젝트 조"><input value={userForm.projectGroup} onChange={(event) => setUserForm({ ...userForm, projectGroup: event.target.value })} /></Field></div><div className="form-grid"><Field label="실습 시작일"><input type="date" value={userForm.startDate} onChange={(event) => setUserForm({ ...userForm, startDate: event.target.value })} /></Field><Field label="실습 종료일"><input type="date" value={userForm.endDate} onChange={(event) => setUserForm({ ...userForm, endDate: event.target.value })} /></Field></div></> : null}
         {error ? <p className="form-error">{error}</p> : null}<div className="modal-actions"><Button type="button" variant="secondary" disabled={saving} onClick={() => setUserOpen(false)}>취소</Button><Button type="submit" disabled={saving}>{saving ? "저장 중..." : editingUser ? "저장" : "사용자 생성"}</Button></div>
       </form>

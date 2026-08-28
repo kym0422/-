@@ -221,7 +221,7 @@ h1, h2, h3, p, dl, dd { margin: 0; }
   .task-profile { align-items: flex-start; flex-direction: column; }.task-profile dl { width: 100%; gap: 18px; flex-wrap: wrap; }.assignment-list article { grid-template-columns: 1fr; }.assigned-mentors { max-width: 420px; }.profile-grid { grid-template-columns: 1fr; }.cohort-grid { grid-template-columns: 1fr; }
 }
 
-.event-detail dd { white-space: pre-wrap; line-height: 1.7; }
+.event-detail dd { white-space: pre-wrap; line-height: 1.7; }.notice-card > p, .comment-list p { white-space: pre-wrap; line-height: 1.7; }
 
 @media (max-width: 600px) {
   .page-header { align-items: flex-start; flex-direction: column; }.page-actions { width: 100%; }.page-actions .button { flex: 1; }.page-header h1 { font-size: 24px; }.card { padding: 17px; }.stats-grid { grid-template-columns: 1fr; }.stat-card { padding: 15px; }.welcome-card { padding: 25px 20px; }.welcome-copy h1 { font-size: 23px; }.welcome-meta { flex-direction: column; gap: 9px; margin-top: 19px; }.welcome-meta dl + dl::before { display: none; }

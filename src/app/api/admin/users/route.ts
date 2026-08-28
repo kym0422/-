@@ -49,7 +49,7 @@ function normalizedProfile(payload: UserPayload) {
         end_date: asString(payload.endDate) || null,
       }
     : {
-        cohort_id: null,
+        cohort_id: role === "MENTOR" ? asString(payload.cohortId) || null : null,
         project_group: null,
         start_date: null,
         end_date: null,

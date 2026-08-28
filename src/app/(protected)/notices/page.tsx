@@ -81,11 +81,17 @@ const editableTargetLabels: Record<Notice["target"], string> = {
   INTERN: targetLabels.INTERN,
 };
 
+function currentKoreaDateInput() {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 const emptyForm = {
   title: "",
   content: "",
   target: "ALL" as Notice["target"],
-  startDate: "2026-08-13",
+  startDate: currentKoreaDateInput(),
   endDate: "",
   important: false,
   calendarLinked: false,
@@ -290,7 +296,8 @@ export default function NoticesPage() {
           .eq("id", editing.id);
 
         if (noticeError) {
-          setError("공지사항을 수정하지 못했습니다. 작성 권한을 확인해 주세요.");
+          console.error("공지사항 수정 실패", noticeError);
+          setError(`공지사항을 수정하지 못했습니다. ${noticeError.message}`);
           return;
         }
 
@@ -298,21 +305,19 @@ export default function NoticesPage() {
         notify("공지사항을 수정했습니다.");
       } else {
         const { data: createdNotice, error: noticeError } = await supabase
-          .from("notices")
-          .insert({
-            title: form.title.trim(),
-            content: form.content.trim(),
+          .rpc("create_notice", {
+            target_title: form.title.trim(),
+            target_content: form.content.trim(),
             target_type: form.target,
-            starts_on: form.startDate,
-            ends_on: form.endDate || null,
-            created_by: user.id,
-            is_important: form.important,
+            target_starts_on: form.startDate,
+            target_ends_on: form.endDate || null,
+            target_is_important: form.important,
           })
-          .select("id")
           .single();
 
         if (noticeError || !createdNotice) {
-          setError("공지사항을 등록하지 못했습니다. 작성 권한을 확인해 주세요.");
+          if (noticeError) console.error("공지사항 등록 실패", noticeError);
+          setError(`공지사항을 등록하지 못했습니다. ${noticeError?.message ?? "생성된 공지 ID를 확인하지 못했습니다."}`);
           return;
         }
 
