@@ -12,7 +12,7 @@ import { Toast } from "./ui";
 import { createClient } from "@/lib/supabase/client";
 
 type NavItem = { href: string; label: string; icon: keyof typeof icons; roles?: Role[] };
-type NotificationItem = { id: string; title: string; detail: string; href: string; createdAt: string; kind: "NOTICE" | "SCHEDULE" };
+type NotificationItem = { id: string; title: string; detail: string; href: string; createdAt: string; type: string; isRead: boolean };
 
 const primaryNavigation: NavItem[] = [
   { href: "/dashboard", label: "대시보드", icon: "dashboard" },
@@ -74,20 +74,25 @@ export function ProtectedApp({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     let mounted = true;
     const loadNotifications = async () => {
-      const supabase = createClient();
-      const now = new Date().toISOString();
-      const [noticeResult, scheduleResult] = await Promise.all([
-        supabase.from("notices").select("id,title,created_at").order("created_at", { ascending: false }).limit(4),
-        supabase.from("calendar_events").select("id,title,start_at,is_important").eq("event_type", "SCHEDULE").gte("end_at", now).order("start_at", { ascending: true }).limit(4),
-      ]);
+      const { data: rows } = await createClient().from("notifications").select("id,type,title,message,href,is_read,created_at").order("created_at", { ascending: false }).limit(20);
       if (!mounted) return;
-      const noticeItems: NotificationItem[] = ((noticeResult.data ?? []) as { id: string; title: string; created_at: string }[]).map((item) => ({ id: `notice-${item.id}`, title: item.title, detail: "새 공지사항", href: "/notices", createdAt: item.created_at, kind: "NOTICE" }));
-      const scheduleItems: NotificationItem[] = ((scheduleResult.data ?? []) as { id: string; title: string; start_at: string; is_important: boolean }[]).map((item) => ({ id: `schedule-${item.id}`, title: item.title, detail: item.is_important ? "중요 일정" : "다가오는 일정", href: "/calendar", createdAt: item.start_at, kind: "SCHEDULE" }));
-      setNotifications([...noticeItems, ...scheduleItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 6));
+      setNotifications(((rows ?? []) as { id: string; type: string; title: string; message: string; href: string; is_read: boolean; created_at: string }[]).map((item) => ({ id: item.id, title: item.title, detail: item.message, href: item.href, createdAt: item.created_at, type: item.type, isRead: item.is_read })));
     };
     void loadNotifications();
-    return () => { mounted = false; };
+    const interval = window.setInterval(() => void loadNotifications(), 30000);
+    return () => { mounted = false; window.clearInterval(interval); };
   }, [currentUser]);
+
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
+  async function markNotificationRead(id: string) {
+    await createClient().from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("id", id);
+    setNotifications((items) => items.map((item) => item.id === id ? { ...item, isRead: true } : item));
+  }
+  async function markAllNotificationsRead() {
+    if (!currentUser || !unreadCount) return;
+    await createClient().from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("recipient_id", currentUser.id).eq("is_read", false);
+    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+  }
 
   if (!ready || !currentUser) {
     return <div className="loading-screen"><span className="spinner" /><p>로그인 정보를 확인하고 있습니다.</p></div>;
@@ -102,8 +107,8 @@ export function ProtectedApp({ children }: { children: ReactNode }) {
           <div className="breadcrumb">현장실습 프로그램 <span>/</span> {getCurrentLabel(pathname, currentUser.role)}</div>
           <div className="topbar-actions">
             <div className="notification-wrap">
-              <button className="icon-button notification-button" aria-label="알림" aria-expanded={notificationOpen} onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}><Bell size={19} />{notifications.length ? <i /> : null}</button>
-              {notificationOpen ? <div className="notification-dropdown"><div><strong>알림</strong><span>최근 공지와 일정</span></div>{notifications.length ? <ul>{notifications.map((item) => <li key={item.id}><Link href={item.href} onClick={() => setNotificationOpen(false)}><small>{item.kind === "NOTICE" ? "공지" : "일정"} · {new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(new Date(item.createdAt))}</small><strong>{item.title}</strong><span>{item.detail}</span></Link></li>)}</ul> : <p>새로운 알림이 없습니다.</p>}</div> : null}
+              <button className="icon-button notification-button" aria-label="알림" aria-expanded={notificationOpen} onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}><Bell size={19} />{unreadCount ? <i>{unreadCount > 9 ? "9+" : unreadCount}</i> : null}</button>
+              {notificationOpen ? <div className="notification-dropdown"><div><strong>알림</strong><button type="button" onClick={() => void markAllNotificationsRead()} disabled={!unreadCount}>모두 읽음</button></div>{notifications.length ? <ul>{notifications.map((item) => <li key={item.id} className={item.isRead ? "is-read" : "is-unread"}><Link href={item.href} onClick={() => { void markNotificationRead(item.id); setNotificationOpen(false); }}><small>{notificationLabel(item.type)} · {new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(new Date(item.createdAt))}</small><strong>{item.title}</strong><span>{item.detail}</span></Link></li>)}</ul> : <p>새로운 알림이 없습니다.</p>}</div> : null}
             </div>
             <div className="profile-menu-wrap">
               <button className="profile-button" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
@@ -177,4 +182,14 @@ function ProfileMenu({ onClose }: { onClose: () => void }) {
 function getCurrentLabel(pathname: string, role: Role) {
   const navigation = [...primaryNavigation, ...roleNavigation[role]];
   return navigation.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))?.label ?? "홈";
+}
+
+function notificationLabel(type: string) {
+  if (type.startsWith("TASK")) return "과제";
+  if (type.startsWith("SCHEDULE")) return "일정";
+  if (type.startsWith("WEEKLY")) return "업무보고";
+  if (type.startsWith("SUGGESTION")) return "건의";
+  if (type.startsWith("EVALUATION")) return "평가";
+  if (type.startsWith("NOTICE")) return "공지";
+  return "알림";
 }
