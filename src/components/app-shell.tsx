@@ -8,8 +8,10 @@ import { icons } from "./icons";
 import { roleLabels, type Role } from "./app-data";
 import { useAppStore } from "./app-store";
 import { Avatar, Toast } from "./ui";
+import { createClient } from "@/lib/supabase/client";
 
 type NavItem = { href: string; label: string; icon: keyof typeof icons; roles?: Role[] };
+type NotificationItem = { id: string; title: string; detail: string; href: string; createdAt: string; kind: "NOTICE" | "SCHEDULE" };
 
 const primaryNavigation: NavItem[] = [
   { href: "/dashboard", label: "대시보드", icon: "dashboard" },
@@ -53,9 +55,11 @@ function routeAllowed(pathname: string, role: Role) {
 export function ProtectedApp({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, ready, toast, notify } = useAppStore();
+  const { currentUser, ready, toast } = useAppStore();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   useEffect(() => {
     if (ready && !currentUser) router.replace("/login");
@@ -64,6 +68,25 @@ export function ProtectedApp({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (currentUser && !routeAllowed(pathname, currentUser.role)) router.replace("/403");
   }, [currentUser, pathname, router]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let mounted = true;
+    const loadNotifications = async () => {
+      const supabase = createClient();
+      const now = new Date().toISOString();
+      const [noticeResult, scheduleResult] = await Promise.all([
+        supabase.from("notices").select("id,title,created_at").order("created_at", { ascending: false }).limit(4),
+        supabase.from("calendar_events").select("id,title,start_at,is_important").eq("event_type", "SCHEDULE").gte("end_at", now).order("start_at", { ascending: true }).limit(4),
+      ]);
+      if (!mounted) return;
+      const noticeItems: NotificationItem[] = ((noticeResult.data ?? []) as { id: string; title: string; created_at: string }[]).map((item) => ({ id: `notice-${item.id}`, title: item.title, detail: "새 공지사항", href: "/notices", createdAt: item.created_at, kind: "NOTICE" }));
+      const scheduleItems: NotificationItem[] = ((scheduleResult.data ?? []) as { id: string; title: string; start_at: string; is_important: boolean }[]).map((item) => ({ id: `schedule-${item.id}`, title: item.title, detail: item.is_important ? "중요 일정" : "다가오는 일정", href: "/calendar", createdAt: item.start_at, kind: "SCHEDULE" }));
+      setNotifications([...noticeItems, ...scheduleItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 6));
+    };
+    void loadNotifications();
+    return () => { mounted = false; };
+  }, [currentUser]);
 
   if (!ready || !currentUser) {
     return <div className="loading-screen"><span className="spinner" /><p>로그인 정보를 확인하고 있습니다.</p></div>;
@@ -77,7 +100,10 @@ export function ProtectedApp({ children }: { children: ReactNode }) {
           <button className="icon-button mobile-menu" onClick={() => setMobileOpen(true)} aria-label="메뉴 열기"><Menu size={21} /></button>
           <div className="breadcrumb">현장실습 프로그램 <span>/</span> {getCurrentLabel(pathname, currentUser.role)}</div>
           <div className="topbar-actions">
-            <button className="icon-button notification-button" aria-label="알림" onClick={() => notify("알림 센터는 Phase 2에서 제공할 예정입니다.", "info")}><Bell size={19} /><i /></button>
+            <div className="notification-wrap">
+              <button className="icon-button notification-button" aria-label="알림" aria-expanded={notificationOpen} onClick={() => { setNotificationOpen((value) => !value); setProfileOpen(false); }}><Bell size={19} />{notifications.length ? <i /> : null}</button>
+              {notificationOpen ? <div className="notification-dropdown"><div><strong>알림</strong><span>최근 공지와 일정</span></div>{notifications.length ? <ul>{notifications.map((item) => <li key={item.id}><Link href={item.href} onClick={() => setNotificationOpen(false)}><small>{item.kind === "NOTICE" ? "공지" : "일정"} · {new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric" }).format(new Date(item.createdAt))}</small><strong>{item.title}</strong><span>{item.detail}</span></Link></li>)}</ul> : <p>새로운 알림이 없습니다.</p>}</div> : null}
+            </div>
             <div className="profile-menu-wrap">
               <button className="profile-button" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
                 <Avatar name={currentUser.name} size="small" />
