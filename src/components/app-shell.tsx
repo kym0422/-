@@ -18,7 +18,7 @@ const primaryNavigation: NavItem[] = [
   { href: "/dashboard", label: "대시보드", icon: "dashboard" },
   { href: "/notices", label: "공지사항", icon: "notices" },
   { href: "/calendar", label: "공유 캘린더", icon: "calendar" },
-  { href: "/board/templates", label: "게시판", icon: "board" },
+  { href: "/board/templates", label: "자료실", icon: "board" },
 ];
 
 const roleNavigation: Record<Role, NavItem[]> = {

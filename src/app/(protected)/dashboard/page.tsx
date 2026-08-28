@@ -39,6 +39,36 @@ function displayDate(value: string) {
   return new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric" }).format(new Date(value));
 }
 
+function koreaSaturday(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + (6 - date.getUTCDay()));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function addKoreaDays(value: string, days: number) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function monthWeekLabel(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const currentDate = new Date(Date.UTC(year, month - 1, day));
+  const weekStart = new Date(currentDate);
+  weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  const startMonth = weekStart.getUTCMonth();
+  const endMonth = weekEnd.getUTCMonth();
+  if (startMonth !== endMonth) {
+    return `${weekEnd.getUTCMonth() + 1}월 1주차`;
+  }
+  const firstDay = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  return `${month}월 ${Math.ceil((firstDay + day) / 7)}주차`;
+}
+
 export default function DashboardPage() {
   const { currentUser, notify } = useAppStore();
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -98,10 +128,22 @@ export default function DashboardPage() {
 
   if (!currentUser) return null;
   const today = koreaDate(new Date().toISOString());
+  const weekEnd = koreaSaturday(today);
+  const todayWeekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const nextWeekStart = addKoreaDays(today, 7 - todayWeekday);
+  const nextWeekEnd = addKoreaDays(nextWeekStart, 6);
   const currentStartDate = ownProfile?.start_date ?? currentUser.startDate ?? currentCohort.start_date;
   const currentEndDate = ownProfile?.end_date ?? currentUser.endDate ?? currentCohort.end_date;
   const week = getWeekNumber(currentStartDate, currentEndDate);
   const upcoming = events.filter((event) => event.event_type === "SCHEDULE" && koreaDate(event.start_at) >= today).slice(0, 4);
+  const thisWeekScheduleCount = events.filter((event) => {
+    const startDate = koreaDate(event.start_at);
+    return event.event_type === "SCHEDULE" && startDate >= today && startDate <= weekEnd;
+  }).length;
+  const nextWeekScheduleCount = events.filter((event) => {
+    const startDate = koreaDate(event.start_at);
+    return event.event_type === "SCHEDULE" && startDate >= nextWeekStart && startDate <= nextWeekEnd;
+  }).length;
   const todos = events.filter((event) => event.event_type === "TODO" && event.created_by === currentUser.id && !event.is_completed);
   const assignedInterns = currentUser.role === "MENTOR"
     ? assignments.filter((item) => item.primary_mentor_id === currentUser.id || item.secondary_mentor_id === currentUser.id).map((item) => profiles.find((profile) => profile.id === item.intern_id)).filter((profile): profile is ProfileRow => Boolean(profile))
@@ -139,9 +181,11 @@ export default function DashboardPage() {
       </section>
 
       <div className="stats-grid">
-        <Card className="stat-card"><span className="stat-icon blue"><CalendarClock size={21} /></span><div><p>다가오는 일정</p><strong>{upcoming.length}</strong><small>일정 기준</small></div></Card>
-        <Card className="stat-card"><span className="stat-icon amber"><CheckCircle2 size={21} /></span><div><p>남은 To-do</p><strong>{todos.length}</strong><small>나만 볼 수 있는 할 일</small></div></Card>
-        {currentUser.role === "ADMIN" ? <><Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>활동 인턴</p><strong>{profiles.filter((profile) => profile.role === "INTERN" && profile.is_active && profile.cohort_id === currentCohort.id).length}</strong><small>{currentCohort.name}</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><MessageSquareText size={21} /></span><div><p>읽지 않은 건의</p><strong>{suggestions.filter((suggestion) => !suggestion.read_at && suggestion.status === "ACTIVE").length}</strong><small>익명으로 보호됨</small></div></Card></> : currentUser.role === "MENTOR" ? <><Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>담당 인턴</p><strong>{assignedInterns.length}</strong><small>주·서브 멘토 포함</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>제출 평가</p><strong>{evaluations.length}</strong><small>내가 작성한 기록</small></div></Card></> : <><Card className="stat-card"><span className="stat-icon green"><BriefcaseBusiness size={21} /></span><div><p>배정 과제</p><strong>{tasks.length}</strong><small>현재 진행 과제</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>작성 보고서</p><strong>{reports.length}</strong><small>저장된 주차 기록</small></div></Card></>}
+        <Card className="stat-card"><span className="stat-icon blue"><CalendarClock size={21} /></span><div><p>이번 주 일정</p><strong>{thisWeekScheduleCount}</strong><small>{monthWeekLabel(today)}</small></div></Card>
+        <Card className="stat-card"><span className="stat-icon purple"><CalendarClock size={21} /></span><div><p>다음 주 일정</p><strong>{nextWeekScheduleCount}</strong><small>{monthWeekLabel(nextWeekStart)}</small></div></Card>
+        <Card className="stat-card"><span className="stat-icon amber"><CheckCircle2 size={21} /></span><div><p>남은 To-do</p><strong>{todos.length}</strong></div></Card>
+        {currentUser.role === "ADMIN" ? <><Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>활동 인턴</p><strong>{profiles.filter((profile) => profile.role === "INTERN" && profile.is_active && profile.cohort_id === currentCohort.id).length}</strong><small>{currentCohort.name}</small></div></Card>
+        </> : currentUser.role === "MENTOR" ? <><Card className="stat-card"><span className="stat-icon green"><UsersRound size={21} /></span><div><p>담당 인턴</p><strong>{assignedInterns.length}</strong><small>주·서브 멘토 포함</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>제출 평가</p><strong>{evaluations.length}</strong><small>내가 작성한 기록</small></div></Card></> : <><Card className="stat-card"><span className="stat-icon green"><BriefcaseBusiness size={21} /></span><div><p>배정 과제</p><strong>{tasks.length}</strong><small>현재 진행 과제</small></div></Card><Card className="stat-card"><span className="stat-icon purple"><FileText size={21} /></span><div><p>작성 보고서</p><strong>{reports.length}</strong><small>저장된 주차 기록</small></div></Card></>}
       </div>
 
       {currentUser.role === "MENTOR" ? (
@@ -167,8 +211,8 @@ export default function DashboardPage() {
       {currentUser.role === "INTERN" ? <Card className="mentor-strip"><SectionTitle title="나의 멘토" description="멘토 배정은 관리자 설정에서 관리됩니다." /><div className="mentor-list">{primaryMentor ? <div><Avatar imageUrl={primaryMentor.avatar_url ?? undefined} name={primaryMentor.name} role={primaryMentor.role} /><span><small>담당 멘토</small><strong>{primaryMentor.name}</strong><em>{primaryMentor.department}</em></span></div> : null}{secondaryMentor ? <div><Avatar imageUrl={secondaryMentor.avatar_url ?? undefined} name={secondaryMentor.name} role={secondaryMentor.role} /><span><small>서브 멘토</small><strong>{secondaryMentor.name}</strong><em>{secondaryMentor.department}</em></span></div> : null}</div></Card> : null}
 
       <div className="dashboard-columns">
-        <Card><SectionTitle title="오늘의 To-do" description="캘린더의 개인 To-do를 표시합니다." action={<Link className="text-link" href="/calendar">전체 보기 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : todos.length ? <div className="todo-list">{todos.slice(0, 4).map((todo) => <button key={todo.id} onClick={() => void completeTodo(todo)}><Circle size={18} /><span><strong>{todo.title}</strong><small>{koreaDate(todo.start_at)} · 나만 보기</small></span></button>)}</div> : <EmptyState title="오늘의 To-do가 없습니다." description="캘린더에서 새 할 일을 추가해 보세요." />}</Card>
-        <Card><SectionTitle title="다가오는 주요 일정" description="권한에 따라 조회되는 실제 일정입니다." action={<Link className="text-link" href="/calendar">캘린더 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : upcoming.length ? <div className="schedule-list">{upcoming.map((event) => <div key={event.id} className="schedule-row"><time><strong>{koreaDate(event.start_at).slice(8)}</strong><small>{displayDate(event.start_at)}</small></time><span><strong>{event.title}</strong><small>{event.description}</small></span>{event.is_important ? <Badge tone="red">중요</Badge> : <Badge tone="blue">일정</Badge>}</div>)}</div> : <EmptyState title="다가오는 일정이 없습니다." description="캘린더에서 일정을 확인해 주세요." />}</Card>
+        <Card><SectionTitle title="오늘의 To-do" action={<Link className="text-link" href="/calendar">전체 보기 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : todos.length ? <div className="todo-list">{todos.slice(0, 4).map((todo) => <button key={todo.id} onClick={() => void completeTodo(todo)}><Circle size={18} /><span><strong>{todo.title}</strong><small>{koreaDate(todo.start_at)} · 나만 보기</small></span></button>)}</div> : <EmptyState title="오늘의 To-do가 없습니다." description="캘린더에서 새 할 일을 추가해 보세요." />}</Card>
+        <Card><SectionTitle title="다가오는 주요 일정" action={<Link className="text-link" href="/calendar">캘린더 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : upcoming.length ? <div className="schedule-list">{upcoming.map((event) => <div key={event.id} className="schedule-row"><time><strong>{koreaDate(event.start_at).slice(8)}</strong><small>{displayDate(event.start_at)}</small></time><span><strong>{event.title}</strong></span>{event.is_important ? <Badge tone="red">중요</Badge> : <Badge tone="blue">일정</Badge>}</div>)}</div> : <EmptyState title="다가오는 일정이 없습니다." description="캘린더에서 일정을 확인해 주세요." />}</Card>
       </div>
 
       <Card><SectionTitle title="최근 공지" description="권한에 따라 조회되는 공지입니다." action={<Link className="text-link" href="/notices">공지사항 전체 보기 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : notices.length ? <div className="notice-compact-list">{notices.map((notice) => <Link href="/notices" key={notice.id}><span>{notice.is_important ? <Badge tone="red">중요</Badge> : <Badge tone="blue">안내</Badge>}<strong>{notice.title}</strong></span><time>{displayDate(notice.created_at)}</time></Link>)}</div> : <EmptyState title="표시할 공지가 없습니다." description="새 공지가 등록되면 이곳에 표시됩니다." />}</Card>

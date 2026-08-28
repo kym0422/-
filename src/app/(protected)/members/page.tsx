@@ -79,7 +79,7 @@ export default function MembersPage() {
   }, [currentUser, loadMembers]);
 
   if (!currentUser) return null;
-  const profiles = members.filter((member) => selectedCohortId === "ALL" || member.role !== "INTERN" || member.cohort_id === selectedCohortId);
+  const profiles = members.filter((member) => selectedCohortId === "ALL" || member.role === "ADMIN" || member.cohort_id === selectedCohortId);
   const destinations = currentUser.role === "ADMIN"
     ? { reports: "/admin/weekly-reports", tasks: "/admin/tasks", evaluations: "/admin/evaluations" }
     : { reports: "/mentor/weekly-reports", tasks: "/mentor/tasks", evaluations: "/mentor/evaluations" };
@@ -94,7 +94,7 @@ export default function MembersPage() {
       const roleMembers = profiles.filter((member) => member.role === role);
       return <Card key={role}>
         <SectionTitle title={roleTitles[role]} description={loading ? "불러오는 중..." : `${roleMembers.length}명`} />
-        {loading ? <p className="text-sm text-slate-500">구성원 정보를 불러오는 중입니다.</p> : roleMembers.length === 0 ? <EmptyState title={`등록된 ${roleTitles[role]}가 없습니다.`} description="활성화된 계정만 표시됩니다." /> : <div className="member-grid">
+        {loading ? <p className="text-sm text-slate-500">구성원 정보를 불러오는 중입니다.</p> : roleMembers.length === 0 ? <EmptyState title={`등록된 ${roleTitles[role]}이 없습니다.`} description="활성화된 계정만 표시됩니다." /> : <div className="member-grid">
           {roleMembers.map((member) => <article className="member-card" key={member.id}>
             <div><Avatar imageUrl={member.avatar_url ?? undefined} name={member.display_name || member.name} role={member.role} size="large" /><span><h2>{member.display_name || member.name}</h2><p>{member.department || "소속 미지정"}</p></span></div>
             <div className="member-contact">
