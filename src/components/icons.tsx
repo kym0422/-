@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   FileBarChart,
   LayoutDashboard,
+  MessageCircleQuestion,
   MessageSquareText,
   Settings,
   Users,
@@ -18,7 +19,7 @@ export const icons = {
   reports: FileBarChart,
   tasks: ClipboardCheck,
   evaluations: MessageSquareText,
-  suggestions: MessageSquareText,
+  suggestions: MessageCircleQuestion,
   settings: Settings,
   members: Users,
 };

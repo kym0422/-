@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useAppStore } from "@/components/app-store";
@@ -31,12 +32,12 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <div className="login-brand"><span className="brand-mark brand-mark-light">G</span><div><strong>GENORAY</strong><small>현장실습 프로그램</small></div></div>
-        <div className="login-copy"><span className="login-kicker"><ShieldCheck size={17} /> 안전한 현장실습 운영</span><h1>성장하는 시간을<br />관리의 빈틈 없이</h1><p>업무 기록부터 과제, 평가, 일정까지. 운영에 필요한 일을 하나의 공간에서 관리합니다.</p><div className="login-features"><span><CheckCircle2 size={17} /> 역할에 맞춘 접근 권한</span><span><CheckCircle2 size={17} /> 업무 현황의 빠른 확인</span><span><CheckCircle2 size={17} /> 기록과 피드백의 체계적 관리</span></div></div>
+        <div className="login-brand"><span className="brand-mark brand-logo-mark brand-mark-light"><Image src="/genoray-logo.png" alt="" width={38} height={38} priority /></span><div><strong>GENORAY</strong><small>현장실습 프로그램</small></div></div>
+        <div className="login-copy"><span className="login-kicker"><ShieldCheck size={17} /> 안전한 현장실습 운영</span><h1>성장하는 시간을<br />관리의 빈틈 없이</h1><p>업무 기록부터 과제, 평가, 일정까지.<br />운영에 필요한 일을 하나의 공간에서 관리합니다.</p><div className="login-features"><span><CheckCircle2 size={17} /> 역할에 맞춘 접근 권한</span><span><CheckCircle2 size={17} /> 업무 현황의 빠른 확인</span><span><CheckCircle2 size={17} /> 기록과 피드백의 체계적 관리</span></div></div>
         <p className="login-copyright">© 2026 Genoray. Internship Operations.</p>
       </section>
       <section className="login-form-panel"><div className="login-form-card">
-        <div className="login-mobile-brand"><span className="brand-mark">G</span><strong>GENORAY</strong></div><p className="eyebrow">WELCOME BACK</p><h2>로그인</h2><p className="login-description">현장실습 통합 관리 시스템에 접속합니다.</p>
+        <div className="login-mobile-brand"><span className="brand-mark brand-logo-mark"><Image src="/genoray-logo.png" alt="" width={34} height={34} priority /></span><strong>GENORAY</strong></div><p className="eyebrow">WELCOME BACK</p><h2>로그인</h2><p className="login-description">현장실습 통합 관리 시스템에 접속합니다.</p>
         <form onSubmit={submit} className="login-form">
           <label><span>이메일</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
           <label><span>비밀번호</span><div className="password-input"><LockKeyhole size={18} /><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>

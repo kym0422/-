@@ -20,6 +20,7 @@ type ProfileRow = {
   id: string;
   auth_user_id: string;
   email: string;
+  phone?: string | null;
   name: string;
   role: Role;
   department: string | null;
@@ -27,6 +28,7 @@ type ProfileRow = {
   project_group: string | null;
   start_date: string | null;
   end_date: string | null;
+  avatar_url?: string | null;
   is_active: boolean;
 };
 
@@ -58,31 +60,44 @@ type AppStoreValue = {
 };
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
+const baseProfileSelect = "id, auth_user_id, email, name, role, department, cohort_id, project_group, start_date, end_date, is_active";
+const extendedProfileSelect = "id, auth_user_id, email, phone, name, role, department, cohort_id, project_group, start_date, end_date, avatar_url, is_active";
 
 function toProfile(profile: ProfileRow): Profile {
   return {
     id: profile.id,
     name: profile.name,
     email: profile.email,
+    phone: profile.phone ?? undefined,
     role: profile.role,
     department: profile.department ?? "",
     cohortId: profile.cohort_id ?? undefined,
     projectGroup: profile.project_group ?? undefined,
     startDate: profile.start_date ?? undefined,
     endDate: profile.end_date ?? undefined,
+    avatarUrl: profile.avatar_url ?? undefined,
     isActive: profile.is_active,
   };
 }
 
 async function getActiveProfile(authUserId: string): Promise<Profile | null> {
-  const { data, error } = await createClient()
+  const supabase = createClient();
+  const { data, error } = await supabase
     .from("profiles")
-    .select("id, auth_user_id, email, name, role, department, cohort_id, project_group, start_date, end_date, is_active")
+    .select(baseProfileSelect)
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
-  const profile = data as ProfileRow | null;
-  return error || !profile || !profile.is_active ? null : toProfile(profile);
+  const baseProfile = data as ProfileRow | null;
+  if (error || !baseProfile || !baseProfile.is_active) return null;
+
+  const { data: extendedProfile } = await supabase
+    .from("profiles")
+    .select(extendedProfileSelect)
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  return toProfile((extendedProfile as ProfileRow | null) ?? baseProfile);
 }
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
@@ -115,11 +130,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const [{ data: profiles }, { data: cohorts }, { data: assignments }] = await Promise.all([
-        supabase.from("profiles").select("id,auth_user_id,email,name,role,department,cohort_id,project_group,start_date,end_date,is_active"),
+      const [{ data: baseProfiles }, { data: cohorts }, { data: assignments }] = await Promise.all([
+        supabase.from("profiles").select(baseProfileSelect),
         supabase.from("cohorts").select("id,name,start_date,end_date,total_weeks,status"),
         supabase.from("mentor_assignments").select("id,cohort_id,intern_id,primary_mentor_id,secondary_mentor_id"),
       ]);
+      const { data: extendedProfiles } = await supabase.from("profiles").select(extendedProfileSelect);
+      const profiles = extendedProfiles ?? baseProfiles;
       setData({
         ...initialData,
         profiles: ((profiles ?? []) as ProfileRow[]).map(toProfile),

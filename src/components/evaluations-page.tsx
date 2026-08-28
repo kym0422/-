@@ -222,7 +222,7 @@ export function EvaluationsPage({ admin }: { admin: boolean }) {
       <SectionTitle title="인턴 선택" description={admin ? "평가를 확인할 인턴을 선택해 주세요." : "본인에게 배정된 인턴만 표시됩니다."} />
       {interns.length ? <div className="intern-selector">{interns.map((intern) => (
         <button key={intern.id} className={activeInternId === intern.id ? "active" : ""} onClick={() => setSelectedInternId(intern.id)}>
-          <Avatar name={intern.name} />
+          <Avatar imageUrl={intern.avatarUrl} name={intern.name} role={intern.role} />
           <span><strong>{intern.name}</strong><small>{intern.department}</small><em>{intern.projectGroup}</em></span>
         </button>
       ))}</div> : <EmptyState title="선택할 인턴이 없습니다." description={admin ? "활성 인턴을 먼저 등록해 주세요." : "담당 인턴이 배정되면 이곳에 표시됩니다."} />}

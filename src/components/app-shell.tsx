@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronDown, LogOut, Menu, UserRound, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { icons } from "./icons";
 import { roleLabels, type Role } from "./app-data";
 import { useAppStore } from "./app-store";
-import { Avatar, Toast } from "./ui";
+import { Toast } from "./ui";
 import { createClient } from "@/lib/supabase/client";
 
 type NavItem = { href: string; label: string; icon: keyof typeof icons; roles?: Role[] };
@@ -106,7 +107,13 @@ export function ProtectedApp({ children }: { children: ReactNode }) {
             </div>
             <div className="profile-menu-wrap">
               <button className="profile-button" onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
-                <Avatar name={currentUser.name} size="small" />
+                <span
+                  className={`profile-avatar profile-avatar-${currentUser.role.toLowerCase()}`}
+                  aria-hidden="true"
+                  style={currentUser.avatarUrl ? { backgroundImage: `url(${currentUser.avatarUrl})` } : undefined}
+                >
+                  {currentUser.avatarUrl ? null : <UserRound size={17} />}
+                </span>
                 <span><strong>{currentUser.name}</strong><small>{roleLabels[currentUser.role]}</small></span>
                 <ChevronDown size={15} />
               </button>
@@ -130,7 +137,7 @@ function Sidebar({ open, onClose, role }: { open: boolean; onClose: () => void; 
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
         <div className="brand">
           <Link className="brand-home" href="/dashboard" onClick={onClose} aria-label="메인 대시보드로 이동">
-            <span className="brand-mark">G</span>
+            <span className="brand-mark brand-logo-mark"><Image src="/genoray-logo.png" alt="" width={34} height={34} priority /></span>
             <div><strong>GENORAY</strong><small>현장실습 프로그램</small></div>
           </Link>
           <button className="icon-button sidebar-close" onClick={onClose} aria-label="메뉴 닫기"><X size={20} /></button>

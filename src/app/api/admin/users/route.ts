@@ -11,6 +11,7 @@ type UserPayload = {
   profileId?: string;
   name?: string;
   email?: string;
+  phone?: string | null;
   password?: string;
   role?: Role;
   department?: string;
@@ -33,6 +34,7 @@ function normalizedProfile(payload: UserPayload) {
   const role = payload.role;
   const name = asString(payload.name);
   const email = asString(payload.email).toLowerCase();
+  const phone = asString(payload.phone) || null;
   const department = asString(payload.department);
 
   if (!name || !email.includes("@") || !department || !role || !isRole(role)) {
@@ -61,6 +63,7 @@ function normalizedProfile(payload: UserPayload) {
     name,
     display_name: name,
     email,
+    phone,
     role,
     department,
     is_active: payload.isActive ?? true,

@@ -21,7 +21,7 @@ type EventRow = {
   created_by: string;
 };
 type NoticeRow = { id: string; title: string; created_at: string; is_important: boolean };
-type ProfileRow = { id: string; name: string; role: "ADMIN" | "MENTOR" | "INTERN"; department: string | null; cohort_id: string | null; project_group: string | null; start_date: string | null; end_date: string | null; is_active: boolean };
+type ProfileRow = { id: string; name: string; role: "ADMIN" | "MENTOR" | "INTERN"; department: string | null; cohort_id: string | null; project_group: string | null; start_date: string | null; end_date: string | null; avatar_url?: string | null; is_active: boolean };
 type AssignmentRow = { intern_id: string; primary_mentor_id: string; secondary_mentor_id: string | null };
 type CohortRow = { id: string; name: string; start_date: string; end_date: string; total_weeks: number; status: "UPCOMING" | "ACTIVE" | "COMPLETED" };
 type CountRow = { id: string };
@@ -154,7 +154,7 @@ export default function DashboardPage() {
               const internProgress = internCohort.total_weeks > 0 ? ((internWeek ?? 1) / internCohort.total_weeks) * 100 : 0;
 
               return <article className="intern-card" key={intern.id}>
-                <div className="intern-card-head"><Avatar name={intern.name} /><div><strong>{intern.name}</strong><span>{intern.department} · {internCohort.name} · {intern.project_group}</span></div></div>
+                <div className="intern-card-head"><Avatar imageUrl={intern.avatar_url ?? undefined} name={intern.name} role={intern.role} /><div><strong>{intern.name}</strong><span>{intern.department} · {internCohort.name} · {intern.project_group}</span></div></div>
                 <div className="intern-progress"><span>실습 진행</span><strong>{internWeek ?? 0}주차 / {internCohort.total_weeks}주</strong></div>
                 <ProgressBar value={internProgress} />
                 <div className="card-actions"><Link href="/mentor/evaluations">중간 평가</Link><Link href="/mentor/weekly-reports">주간 업무 기록</Link></div>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
         </Card>
       ) : null}
 
-      {currentUser.role === "INTERN" ? <Card className="mentor-strip"><SectionTitle title="나의 멘토" description="멘토 배정은 관리자 설정에서 관리됩니다." /><div className="mentor-list">{primaryMentor ? <div><Avatar name={primaryMentor.name} /><span><small>담당 멘토</small><strong>{primaryMentor.name}</strong><em>{primaryMentor.department}</em></span></div> : null}{secondaryMentor ? <div><Avatar name={secondaryMentor.name} /><span><small>서브 멘토</small><strong>{secondaryMentor.name}</strong><em>{secondaryMentor.department}</em></span></div> : null}</div></Card> : null}
+      {currentUser.role === "INTERN" ? <Card className="mentor-strip"><SectionTitle title="나의 멘토" description="멘토 배정은 관리자 설정에서 관리됩니다." /><div className="mentor-list">{primaryMentor ? <div><Avatar imageUrl={primaryMentor.avatar_url ?? undefined} name={primaryMentor.name} role={primaryMentor.role} /><span><small>담당 멘토</small><strong>{primaryMentor.name}</strong><em>{primaryMentor.department}</em></span></div> : null}{secondaryMentor ? <div><Avatar imageUrl={secondaryMentor.avatar_url ?? undefined} name={secondaryMentor.name} role={secondaryMentor.role} /><span><small>서브 멘토</small><strong>{secondaryMentor.name}</strong><em>{secondaryMentor.department}</em></span></div> : null}</div></Card> : null}
 
       <div className="dashboard-columns">
         <Card><SectionTitle title="오늘의 To-do" description="캘린더의 개인 To-do를 표시합니다." action={<Link className="text-link" href="/calendar">전체 보기 <ArrowRight size={15} /></Link>} />{loading ? <p className="p-5 text-sm text-slate-500">데이터를 불러오는 중입니다.</p> : todos.length ? <div className="todo-list">{todos.slice(0, 4).map((todo) => <button key={todo.id} onClick={() => void completeTodo(todo)}><Circle size={18} /><span><strong>{todo.title}</strong><small>{koreaDate(todo.start_at)} · 나만 보기</small></span></button>)}</div> : <EmptyState title="오늘의 To-do가 없습니다." description="캘린더에서 새 할 일을 추가해 보세요." />}</Card>

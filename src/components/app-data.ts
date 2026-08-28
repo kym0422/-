@@ -1,6 +1,6 @@
 export type Role = "ADMIN" | "MENTOR" | "INTERN";
 
-export type Profile = { id: string; name: string; email: string; role: Role; department: string; cohortId?: string; projectGroup?: string; startDate?: string; endDate?: string; isActive: boolean };
+export type Profile = { id: string; name: string; email: string; phone?: string; role: Role; department: string; cohortId?: string; projectGroup?: string; startDate?: string; endDate?: string; avatarUrl?: string; isActive: boolean };
 export type NoticeComment = { id: string; authorId: string; authorName: string; content: string; createdAt: string };
 export type Notice = { id: string; title: string; content: string; target: "ALL" | Role; createdBy: string; createdAt: string; startDate: string; endDate?: string; important: boolean; calendarLinked: boolean; comments: NoticeComment[] };
 export type CalendarEvent = { id: string; title: string; description: string; startDate: string; endDate: string; eventType: "SCHEDULE" | "TODO"; visibility: "ALL" | "PRIVATE" | "ADMIN" | "MENTOR" | "INTERN"; isImportant: boolean; isCompleted: boolean; createdBy: string; noticeId?: string };

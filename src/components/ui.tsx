@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode, useEffect } from "react";
-import { AlertCircle, CheckCircle2, Inbox, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Inbox, UserRound, X } from "lucide-react";
+import { type Role } from "./app-data";
 
 export function Button({
   children,
@@ -167,6 +168,14 @@ export function ProgressBar({ value }: { value: number }) {
   );
 }
 
-export function Avatar({ name, size = "medium" }: { name: string; size?: "small" | "medium" | "large" }) {
-  return <span className={`avatar avatar-${size}`} aria-hidden="true">{name.slice(-2)}</span>;
+export function Avatar({ imageUrl, name, role, size = "medium" }: { imageUrl?: string; name: string; role?: Role; size?: "small" | "medium" | "large" }) {
+  return (
+    <span
+      className={`avatar avatar-${size}${role ? ` avatar-${role.toLowerCase()}` : ""}`}
+      aria-hidden="true"
+      style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
+    >
+      {imageUrl ? null : role ? <UserRound size={size === "large" ? 29 : size === "small" ? 16 : 20} /> : name.slice(-2)}
+    </span>
+  );
 }

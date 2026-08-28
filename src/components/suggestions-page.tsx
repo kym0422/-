@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCheck, Eye, LockKeyhole, Plus, RotateCcw, ShieldCheck } from "lucide-react";
+import { CheckCheck, Eye, MessageCircleQuestion, Plus, RotateCcw, ShieldCheck } from "lucide-react";
 import { useAppStore } from "./app-store";
 import { Badge, Button, Card, EmptyState, Field, Modal, PageHeader, SectionTitle } from "./ui";
 import { createClient } from "@/lib/supabase/client";
@@ -170,7 +170,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
         <strong>{admin ? "운영자 화면에는 작성자 정보가 표시되지 않습니다." : "익명 건의의 작성자 정보는 별도 보안 경계로 보호됩니다."}</strong>
         <p>제출·취소·읽음 처리는 권한 정책으로 검증하며, 공개 건의에는 작성자 식별정보를 저장하지 않습니다.</p>
       </div>
-      <LockKeyhole size={22} />
+      <MessageCircleQuestion size={22} />
     </div>
     <Card>
       <SectionTitle
@@ -179,7 +179,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
       />
       {loading ? <p className="p-5 text-sm text-slate-500">건의 목록을 불러오는 중입니다.</p> : suggestions.length ? <div className="suggestion-list">{suggestions.map((suggestion) => (
         <article key={suggestion.id} className={suggestion.status === "CANCELED" ? "canceled" : ""}>
-          <div className="anonymous-avatar"><LockKeyhole size={20} /></div>
+          <div className="anonymous-avatar"><MessageCircleQuestion size={20} /></div>
           <div>
             <span className="suggestion-badges">
               <Badge tone={suggestion.status === "ACTIVE" ? "green" : "gray"}>{suggestion.status === "ACTIVE" ? "접수" : "취소"}</Badge>
@@ -199,7 +199,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
         <Field label="내용" hint="개인 식별이 가능한 정보는 직접 작성하지 말아 주세요."><textarea rows={9} value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} placeholder="개선이 필요한 점과 제안을 구체적으로 작성해 주세요." /></Field>
         {error ? <p className="form-error">{error}</p> : null}
         <div className="anonymous-confirm">
-          <LockKeyhole size={18} />
+          <MessageCircleQuestion size={18} />
           <span><strong>익명 제출 보호</strong><small>계정 식별정보와 공개 건의 데이터를 분리해 보호합니다.</small></span>
         </div>
         <div className="modal-actions">
@@ -211,7 +211,7 @@ export function SuggestionsPage({ admin }: { admin: boolean }) {
     <Modal open={Boolean(detail)} onClose={() => !actionPending && setDetail(null)} title={detail?.title ?? "건의 상세"}>
       {detail ? <div className="suggestion-detail">
         <div className="anonymous-detail-head">
-          <span><LockKeyhole size={21} /></span>
+          <span><MessageCircleQuestion size={21} /></span>
           <div><strong>익명 제출</strong><small>작성자 정보는 이 화면에 표시되지 않습니다.</small></div>
         </div>
         <div className="detail-badges">
